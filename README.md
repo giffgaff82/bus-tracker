@@ -36,6 +36,7 @@ Source files in `web/src/`:
 | `rides.js` | Logging rides, the "Caught it!" celebration, stats |
 | `track.js` | Tracking a bus, reminders |
 | `widget.js` | Hands data to the Android widget (only runs inside the Android app) |
+| `analytics.js` | Usage stats, with consent (live site only) |
 | `figure.js` | The animated walk / run / bus-and-tick figures |
 
 ## Android app
@@ -66,3 +67,10 @@ Signing uses four repository secrets (Settings → Secrets and variables → Act
 
 Personal journeys live only in each person's browser (`localStorage`). Nothing personal is
 committed here: test setups are kept in git-ignored files (see [`tests/README.md`](tests/README.md)).
+
+**Usage stats:** Google Analytics 4 (`G-X6NE7RJ86W`), on iangifford.com only – never on the preview
+site or in tests. People are asked once ("Allow" / "No thanks", changeable in Settings). Until
+they answer, Google's consent mode sends cookie-free pings; after "No thanks" nothing is sent.
+Only screen names and a few events are recorded (`setup_complete`, `track_bus`, `reminder_on`,
+`reminder_calendar`, `caught_bus`) plus whether it's the browser, home-screen app or Android app –
+never addresses, stops or times. Code: `web/src/analytics.js`.

@@ -20,6 +20,7 @@ const stopShort = n => stopParts({ name: cleanName(n) }, null).main;
 
 // ---- start tracking ----
 function trackBus(b, key, date){
+  stat('track_bus', { from: view === 'plan' ? 'plan_ahead' : view || 'now' });
   const j = cfg.journeys[key], p = stopParts(b.stop, j);
   T = { date: date || londonNow().date, dir: key, tripId: b.tripId, svcId: b.svcId, line: b.line, atco: b.stop.atco, stop: p.main, side: p.side,
         walk: b.stop.walk, aimed: b.aimed, arrive: b.arrive, target: key === 'out' ? toMins(j.arriveBy) : null, remind: false, notified: false, ran: false };
@@ -184,12 +185,14 @@ async function toggleRemind(){
   if (!T) return;
   if (T.remind) { T.remind = false; T.notified = false; saveT(); clearTimeout(remindTimer); nativeCancel(); renderTrack(); return; }
   T.remind = true; T.notified = false; saveT();
+  stat('reminder_on', { kind: NATIVE ? 'android_alarm' : 'notification' });
   if (NATIVE) { await nativePermission(); scheduleReminder(); renderTrack(); return; }
   if ('Notification' in window && Notification.permission === 'default') { try { await Notification.requestPermission(); } catch {} }
   await registerSW(); scheduleReminder(); renderTrack();
 }
 function calendarFile(){
   const st = trackState(); if (!st) return;
+  stat('reminder_calendar');
   const f = ms => new Date(ms).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
   const start = londonToMs(T.date, st.leave), end = Math.max(londonToMs(T.date, T.arrive + st.delay), start + 15 * 60000);
   const ics = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Which stop//EN', 'BEGIN:VEVENT', `UID:${T.tripId}-${T.date}-${T.atco}@which-stop`, `DTSTAMP:${f(Date.now())}`,

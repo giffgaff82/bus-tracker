@@ -54,6 +54,7 @@ function show(v){
   $('nav').hidden = v === 'setup' || v === 'track';
   document.querySelectorAll('#nav button').forEach(b => { if (b.dataset.view === v) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
   window.scrollTo(0, 0);
+  statScreen(v); renderConsent();
   if (v === 'settings') buildSettings();
   if (v === 'plan') { if (!plan.key) planDefaults(); planControls(); runPlan(); }
   else if (v === 'stats') { renderStats(); }
@@ -164,6 +165,7 @@ $('save').addEventListener('click', () => {
   cfg = { v: 3, home: strip(found.home), work: strip(found.work), run: (cfg && cfg.run) || 0.5, journeys: { out, back } };
   store.set(KEY, cfg);
   manualJourney = null; shownKey = null; buses = []; lastOk = null;
+  stat('setup_complete', { method: 'addresses', journeys: back ? 2 : 1 });
   show('now');
 });
 
@@ -177,7 +179,7 @@ function decode(code){
 }
 const shareLink = () => `${location.origin === 'null' || location.protocol === 'file:' ? location.href.split('#')[0] : location.origin + location.pathname}#setup=${encode(cfg)}`;
 $('use-code').addEventListener('click', () => {
-  try { cfg = decode($('code-in').value); store.set(KEY, cfg); status('code-status', ''); show('now'); }
+  try { cfg = decode($('code-in').value); store.set(KEY, cfg); status('code-status', ''); stat('setup_complete', { method: 'code' }); show('now'); }
   catch { status('code-status', 'That doesn\'t look like a setup code. Copy the whole thing and try again.', true); }
 });
 $('copy-code').addEventListener('click', async e => {
@@ -450,6 +452,7 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) { ma
 /*@rides*/
 /*@track*/
 /*@widget*/
+/*@analytics*/
 // ---------- appearance ----------
 function getTheme(){ try { const v = localStorage.getItem('bw2-theme'); return v === 'light' || v === 'dark' ? v : 'auto'; } catch { return 'auto'; } }
 function applyTheme(th){

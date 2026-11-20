@@ -23,7 +23,7 @@ for k in ['core', 'migrate', 'analyse', 'load']:
 # figure.js is also loadable from Node for previews; drop its module.exports lines
 fig = re.sub(r"^if \(typeof module !== 'undefined'\).*$", "", read('figure.js'), flags=re.M)
 ui = read('ui.js')
-for part in ['plan', 'rides', 'track', 'widget']:
+for part in ['plan', 'rides', 'track', 'widget', 'analytics']:
     ui = ui.replace(f'/*@{part}*/', read(f'{part}.js'))
 t = t.replace('/*@figure*/', fig).replace('/*@ui*/', ui).replace('/*@icon*/', read('icon.b64').strip())
 

@@ -59,6 +59,7 @@ function checkIcon(){
 let celebrateTimer = null;
 function caught(x){
   const r = logRide(x); if (!r) { refreshAll(); return; }
+  stat('caught_bus');
   const all = rides.all(), n = all.length, sameLine = all.filter(y => y.line === r.line).length;
   const ord = k => k + (['th', 'st', 'nd', 'rd'][(k % 100 - 20) % 10] || ['th', 'st', 'nd', 'rd'][k % 100] || 'th');
   const lines = [];

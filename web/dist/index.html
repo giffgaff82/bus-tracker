@@ -101,6 +101,7 @@ h1,h2,h3{margin:0;font-weight:500;letter-spacing:-.02em}
 .logged{display:flex;align-items:center;gap:8px;margin-top:14px;font-size:.95rem}
 .logged .tick{color:var(--live)}
 .linkbtn{border:0;background:transparent;padding:4px 2px;color:var(--muted);text-decoration:underline;text-underline-offset:3px;font-size:.88rem}
+.consent{margin-top:16px}
 .prompt{background:var(--inv-bg);color:var(--inv-ink);border-radius:var(--r-card);padding:18px 20px;display:flex;flex-direction:column;gap:6px}
 .prompt .q{display:flex;align-items:center;gap:10px;font-size:1.35rem;letter-spacing:-.02em}
 .prompt .muted{color:var(--inv-muted);margin:0 0 8px}
@@ -338,6 +339,11 @@ textarea{min-height:84px;font-family:ui-monospace,Menlo,monospace;font-size:.75r
     <button class="stamp" id="stamp" type="button"></button>
     <div class="section-h" id="list-h" hidden><span>Other buses · tap to track</span><span>Departs</span></div>
     <ul class="list" id="list"></ul>
+    <section class="panel consent" id="consent" hidden aria-labelledby="consent-h">
+      <h3 id="consent-h">Help improve Which stop?</h3>
+      <p class="note">Share anonymous usage stats, like which screens get used, through Google Analytics. Never your addresses, stops or times. You can change this in Settings.</p>
+      <div class="actions"><button class="btn small" id="consent-yes" type="button">Allow</button><button class="btn ghost small" id="consent-no" type="button">No thanks</button></div>
+    </section>
   </main>
 
   <!-- ================= STOPS ================= -->
@@ -401,9 +407,16 @@ textarea{min-height:84px;font-family:ui-monospace,Menlo,monospace;font-size:.75r
         </div>
         <p class="note" id="theme-note">Auto follows your phone's light or dark mode.</p>
       </div>
+      <div class="panel" id="stats-panel" hidden>
+        <h3>Usage stats</h3>
+        <div class="seg" id="stats-seg" role="group" aria-label="Usage stats">
+          <button type="button" data-stats="granted">Share</button><button type="button" data-stats="denied">Don't share</button>
+        </div>
+        <p class="note">Anonymous stats through Google Analytics: which screens get used, and when someone sets up, tracks a bus, sets a reminder or catches one. Never your addresses, stops or times.</p>
+      </div>
       <div class="panel tip">
         <h3>Enjoying Which stop?</h3>
-        <p class="note">It's free, with no ads and no tracking. If it's saved you a sprint for the bus, you can buy me a coffee.</p>
+        <p class="note">It's free, with no ads, and usage stats are only shared if you allow them. If it's saved you a sprint for the bus, you can buy me a coffee.</p>
         <div class="actions"><a class="btn" href="https://ko-fi.com/giff82" target="_blank" rel="noopener"><svg class="cup" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h12v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5V9z"/><path d="M16 10.5h1.5a2.5 2.5 0 0 1 0 5H16"/><path d="M8.5 4.5c-.6.9.6 1.6 0 2.5M12 4.5c-.6.9.6 1.6 0 2.5"/></svg>Tip me on Ko-fi</a></div>
       </div>
       <p class="note">Live positions and delays from <a href="https://bustimes.org" target="_blank" rel="noopener">bustimes.org</a>, built on operators' open data (Bus Open Data Service). Postcodes from postcodes.io, maps from OpenStreetMap. Buses without a green dot aren't tracked live, so their time is the timetable. Your addresses never leave this phone except to look up places.</p>
@@ -997,6 +1010,7 @@ function show(v){
   $('nav').hidden = v === 'setup' || v === 'track';
   document.querySelectorAll('#nav button').forEach(b => { if (b.dataset.view === v) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
   window.scrollTo(0, 0);
+  statScreen(v); renderConsent();
   if (v === 'settings') buildSettings();
   if (v === 'plan') { if (!plan.key) planDefaults(); planControls(); runPlan(); }
   else if (v === 'stats') { renderStats(); }
@@ -1107,6 +1121,7 @@ $('save').addEventListener('click', () => {
   cfg = { v: 3, home: strip(found.home), work: strip(found.work), run: (cfg && cfg.run) || 0.5, journeys: { out, back } };
   store.set(KEY, cfg);
   manualJourney = null; shownKey = null; buses = []; lastOk = null;
+  stat('setup_complete', { method: 'addresses', journeys: back ? 2 : 1 });
   show('now');
 });
 
@@ -1120,7 +1135,7 @@ function decode(code){
 }
 const shareLink = () => `${location.origin === 'null' || location.protocol === 'file:' ? location.href.split('#')[0] : location.origin + location.pathname}#setup=${encode(cfg)}`;
 $('use-code').addEventListener('click', () => {
-  try { cfg = decode($('code-in').value); store.set(KEY, cfg); status('code-status', ''); show('now'); }
+  try { cfg = decode($('code-in').value); store.set(KEY, cfg); status('code-status', ''); stat('setup_complete', { method: 'code' }); show('now'); }
   catch { status('code-status', 'That doesn\'t look like a setup code. Copy the whole thing and try again.', true); }
 });
 $('copy-code').addEventListener('click', async e => {
@@ -1584,6 +1599,7 @@ function checkIcon(){
 let celebrateTimer = null;
 function caught(x){
   const r = logRide(x); if (!r) { refreshAll(); return; }
+  stat('caught_bus');
   const all = rides.all(), n = all.length, sameLine = all.filter(y => y.line === r.line).length;
   const ord = k => k + (['th', 'st', 'nd', 'rd'][(k % 100 - 20) % 10] || ['th', 'st', 'nd', 'rd'][k % 100] || 'th');
   const lines = [];
@@ -1702,6 +1718,7 @@ const stopShort = n => stopParts({ name: cleanName(n) }, null).main;
 
 // ---- start tracking ----
 function trackBus(b, key, date){
+  stat('track_bus', { from: view === 'plan' ? 'plan_ahead' : view || 'now' });
   const j = cfg.journeys[key], p = stopParts(b.stop, j);
   T = { date: date || londonNow().date, dir: key, tripId: b.tripId, svcId: b.svcId, line: b.line, atco: b.stop.atco, stop: p.main, side: p.side,
         walk: b.stop.walk, aimed: b.aimed, arrive: b.arrive, target: key === 'out' ? toMins(j.arriveBy) : null, remind: false, notified: false, ran: false };
@@ -1866,12 +1883,14 @@ async function toggleRemind(){
   if (!T) return;
   if (T.remind) { T.remind = false; T.notified = false; saveT(); clearTimeout(remindTimer); nativeCancel(); renderTrack(); return; }
   T.remind = true; T.notified = false; saveT();
+  stat('reminder_on', { kind: NATIVE ? 'android_alarm' : 'notification' });
   if (NATIVE) { await nativePermission(); scheduleReminder(); renderTrack(); return; }
   if ('Notification' in window && Notification.permission === 'default') { try { await Notification.requestPermission(); } catch {} }
   await registerSW(); scheduleReminder(); renderTrack();
 }
 function calendarFile(){
   const st = trackState(); if (!st) return;
+  stat('reminder_calendar');
   const f = ms => new Date(ms).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
   const start = londonToMs(T.date, st.leave), end = Math.max(londonToMs(T.date, T.arrive + st.delay), start + 15 * 60000);
   const ics = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Which stop//EN', 'BEGIN:VEVENT', `UID:${T.tripId}-${T.date}-${T.atco}@which-stop`, `DTSTAMP:${f(Date.now())}`,
@@ -2039,6 +2058,62 @@ if (WB) {
   window.addEventListener('whichstopWidget', e => openFrom(e && e.view ? e : (e && e.detail) || null));
   setTimeout(() => { widgetConfig(); widgetTracked(); try { WB.consumeLaunch().then(openFrom).catch(() => {}); } catch {} }, 0);
 }
+
+// ---------- usage stats (Google Analytics 4) ----------
+// Only on the live site, and only what the person allows:
+//  - not asked yet  -> Google's consent mode sends cookie-free, anonymous pings
+//  - "Allow"        -> normal analytics cookies
+//  - "No thanks"    -> nothing is sent at all
+// Never sent: addresses, postcodes, stop names, times or anything else about a journey.
+const GA_ID = 'G-X6NE7RJ86W';
+const STATS_KEY = 'bw2-stats-consent';
+const statsOn = ['iangifford.com', 'www.iangifford.com'].includes(location.hostname) && !navigator.webdriver;
+const SCREEN_NAMES = { now: 'Now', stops: 'Stops', plan: 'Plan ahead', stats: 'Your rides', settings: 'Settings', setup: 'Setup', track: 'Tracker' };
+
+function statsChoice(){ try { return localStorage.getItem(STATS_KEY); } catch { return null; } }
+window.dataLayer = window.dataLayer || [];
+function gtag(){ window.dataLayer.push(arguments); }
+
+if (statsOn) {
+  const allowed = statsChoice() === 'granted';
+  gtag('consent', 'default', { analytics_storage: allowed ? 'granted' : 'denied', ad_storage: 'denied', ad_user_data: 'denied', ad_personalization: 'denied' });
+  gtag('js', new Date());
+  gtag('config', GA_ID, { send_page_view: false, allow_google_signals: false, allow_ad_personalization_signals: false });
+  const installed = window.matchMedia && matchMedia('(display-mode: standalone)').matches;
+  gtag('set', 'user_properties', { app_platform: NATIVE ? 'android_app' : installed ? 'home_screen' : 'browser' });
+  const s = document.createElement('script');
+  s.async = true; s.src = `https://www.googletagmanager.com/gtag/js?id=${GA_ID}`;
+  document.head.appendChild(s);
+}
+
+function stat(name, params){
+  if (!statsOn || statsChoice() === 'denied') return;
+  gtag('event', name, params || {});
+}
+let lastScreen = null;
+function statScreen(v){
+  if (!v || v === lastScreen) return;
+  lastScreen = v;
+  stat('page_view', { page_title: SCREEN_NAMES[v] || v, page_location: `${location.origin}${location.pathname}#${v}` });
+}
+
+function setStatsChoice(c){
+  try { localStorage.setItem(STATS_KEY, c); } catch {}
+  if (statsOn) gtag('consent', 'update', { analytics_storage: c === 'granted' ? 'granted' : 'denied' });
+  renderConsent();
+}
+
+// the one-off question on the Now screen, and the switch in Settings
+function renderConsent(){
+  const card = $('consent'), panel = $('stats-panel');
+  if (card) card.hidden = !(statsOn && cfg && statsChoice() === null);
+  if (panel) panel.hidden = !statsOn;
+  const on = statsChoice() === 'granted';
+  document.querySelectorAll('#stats-seg button').forEach(b => b.setAttribute('aria-pressed', String((b.dataset.stats === 'granted') === on)));
+}
+$('consent-yes').addEventListener('click', () => setStatsChoice('granted'));
+$('consent-no').addEventListener('click', () => setStatsChoice('denied'));
+document.querySelectorAll('#stats-seg button').forEach(b => b.addEventListener('click', () => setStatsChoice(b.dataset.stats)));
 
 // ---------- appearance ----------
 function getTheme(){ try { const v = localStorage.getItem('bw2-theme'); return v === 'light' || v === 'dark' ? v : 'auto'; } catch { return 'auto'; } }

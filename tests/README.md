@@ -10,7 +10,8 @@ python3 web/build.py        # build first
 node tests/track.test.js    # or any *.test.js
 ```
 
-Screenshots go to `tests/out/` (git-ignored).
+Screenshots go to `tests/out/` (git-ignored). `analytics.test.js` checks the consent question and
+exactly what would be sent to Google Analytics, without contacting Google.
 
 ## Your journeys (kept out of git)
 
