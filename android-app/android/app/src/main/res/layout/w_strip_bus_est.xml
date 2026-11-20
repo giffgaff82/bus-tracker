@@ -1,0 +1,3 @@
+<ImageView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="22dp" android:layout_height="22dp"
+    android:src="@drawable/w_marker_est" android:importantForAccessibility="no"/>

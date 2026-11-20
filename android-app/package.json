@@ -1,0 +1,17 @@
+{
+  "name": "whichstop-android",
+  "version": "1.1.0",
+  "description": "Which stop? Android app: wraps the live web app, adds reminders and a home-screen widget",
+  "scripts": {
+    "sync": "cap sync android",
+    "open": "cap open android"
+  },
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@capacitor/android": "^8.6.2",
+    "@capacitor/cli": "^8.6.2",
+    "@capacitor/core": "^8.6.2",
+    "@capacitor/local-notifications": "^8.3.1"
+  },
+  "private": true
+}

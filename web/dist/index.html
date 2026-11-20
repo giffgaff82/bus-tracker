@@ -1,0 +1,2069 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" id="tc-light" content="#E7E7E5" media="(prefers-color-scheme: light)">
+<meta name="theme-color" id="tc-dark" content="#111111" media="(prefers-color-scheme: dark)">
+<script>try{var th=localStorage.getItem("bw2-theme");if(th==="light"||th==="dark")document.documentElement.dataset.theme=th}catch(e){}</script>
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Which stop">
+<meta name="description" content="Which bus stop should I walk (or run) to? Live UK buses for your daily journey.">
+<link rel="apple-touch-icon" sizes="192x192" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+<title>Which stop?</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap">
+<style>
+/* Mono: grey ground, soft cards, one black card for the answer, oversized grotesk numerals, round nav buttons. */
+:root{
+  --bg:#E7E7E5; --card:#EFEFED; --card-edge:#F9F9F7; --surface:#FFFFFF; --ink:#0B0B0B; --muted:#76767A; --line:#D6D6D3;
+  --inv-bg:#0B0B0B; --inv-ink:#F4F4F2; --inv-muted:#9A9A9E;
+  --run:#E5483B; --live:#22A447; --warn-bg:#F6DCD8;
+  --font:"Space Grotesk",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --r-card:24px; --r-btn:999px;
+  color-scheme:light;
+}
+/* Appearance: Auto follows the phone; Light/Dark set data-theme on <html> */
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111111; --card:#1A1A1A; --card-edge:#232323; --surface:#262626; --ink:#F2F2F0; --muted:#8E8E92; --line:#2C2C2C;
+  --inv-bg:#F2F2F0; --inv-ink:#0B0B0B; --inv-muted:#5E5E62;
+  --run:#FF6B5E; --live:#4AD372; --warn-bg:#3A1F1C; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111111; --card:#1A1A1A; --card-edge:#232323; --surface:#262626; --ink:#F2F2F0; --muted:#8E8E92; --line:#2C2C2C;
+  --inv-bg:#F2F2F0; --inv-ink:#0B0B0B; --inv-muted:#5E5E62;
+  --run:#FF6B5E; --live:#4AD372; --warn-bg:#3A1F1C; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:16px;line-height:1.35;
+  font-feature-settings:"tnum" 1;-webkit-font-smoothing:antialiased;
+  padding:max(14px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) calc(110px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
+.wrap{max-width:480px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+button{font:inherit;color:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
+:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
+h1,h2,h3{margin:0;font-weight:500;letter-spacing:-.02em}
+
+/* top bar */
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:48px}
+.logo{width:44px;height:44px;border-radius:50%;background:var(--inv-bg);display:grid;place-items:center;flex:none}
+.logo svg{width:22px;height:22px}
+.toggle{display:flex;background:var(--surface);border-radius:var(--r-btn);padding:4px;gap:2px;min-width:0}
+.toggle button{border:0;background:transparent;border-radius:var(--r-btn);padding:8px 14px;font-size:.92rem;white-space:nowrap;color:var(--ink)}
+.toggle button[aria-pressed="true"]{background:var(--inv-bg);color:var(--inv-ink)}
+
+/* hero: the answer */
+.hero{display:flex;flex-direction:column;gap:6px;padding:6px 2px 4px}
+.hero-row{display:flex;align-items:flex-end;gap:14px}
+.hero-num{font-size:clamp(6.5rem,34vw,9.5rem);font-weight:600;line-height:.8;letter-spacing:-.06em;margin-left:-.04em}
+.hero-num.word{font-size:clamp(4.4rem,22vw,6.4rem);letter-spacing:-.045em}
+.hero.run .hero-num{color:var(--run)}
+.hero-fig{width:clamp(58px,17vw,80px);height:auto;flex:none;margin:0 -6px .1rem -4px;align-self:flex-end}
+.hero.run .hero-fig{color:var(--run)}
+.mini{width:20px;height:20px;vertical-align:-5px;margin:0 3px 0 -3px}
+.rows .s .mini{width:18px;height:18px}
+.seg{display:grid;grid-template-columns:1fr 1fr;background:var(--surface);border-radius:var(--r-btn);padding:4px;gap:4px}
+.seg button,.when-mode button{border:0;background:transparent;border-radius:var(--r-btn);padding:11px 10px;font-size:.98rem;white-space:nowrap}
+.seg button[aria-pressed="true"],.when-mode button[aria-pressed="true"]{background:var(--inv-bg);color:var(--inv-ink)}
+.when{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;background:var(--surface);border-radius:var(--r-btn);padding:4px;gap:4px}
+.when-mode{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.when input{background:transparent;border:0;border-left:1.5px solid var(--line);border-radius:0;padding:4px 14px 4px 16px;font-size:1.6rem;font-weight:500;letter-spacing:-.03em;width:auto;min-width:0}
+.when input:focus{outline:0}
+.when input:focus-visible{outline:2px solid var(--ink);outline-offset:-2px;border-radius:12px}
+
+.top{flex-wrap:wrap}
+.top .title{white-space:nowrap;font-size:clamp(2rem,9.5vw,2.6rem)}
+.when-mode button{min-width:0}
+@media (max-width:380px){
+  .seg button,.when-mode button{padding:10px 6px;font-size:.88rem}
+  .when input{font-size:1.25rem;padding:4px 8px 4px 10px}
+  .toggle button{padding:8px 11px;font-size:.86rem}
+}
+.btn{text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.cup{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.seg.seg3{grid-template-columns:1fr 1fr 1fr;background:var(--bg)}
+.stoprows{display:flex;flex-direction:column;gap:14px}
+.stoprow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 8px;align-items:center}
+.stoprow small{grid-column:1/-1;color:var(--muted);font-size:.8rem}
+.stoprow input[type=text]{padding:10px 12px}
+.stoprow .mins{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:.85rem}
+.stoprow .mins input{width:4.6em;padding:10px}
+
+/* ride logging */
+.catch-row{margin-top:14px}
+.btn .tick,.logged .tick{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.btn.catch{padding:13px 22px}
+.logged{display:flex;align-items:center;gap:8px;margin-top:14px;font-size:.95rem}
+.logged .tick{color:var(--live)}
+.linkbtn{border:0;background:transparent;padding:4px 2px;color:var(--muted);text-decoration:underline;text-underline-offset:3px;font-size:.88rem}
+.prompt{background:var(--inv-bg);color:var(--inv-ink);border-radius:var(--r-card);padding:18px 20px;display:flex;flex-direction:column;gap:6px}
+.prompt .q{display:flex;align-items:center;gap:10px;font-size:1.35rem;letter-spacing:-.02em}
+.prompt .muted{color:var(--inv-muted);margin:0 0 8px}
+.prompt .btn{background:var(--inv-ink);color:var(--inv-bg)}
+.prompt .btn.ghost{background:transparent;color:var(--inv-ink);box-shadow:inset 0 0 0 1.5px var(--inv-muted)}
+.celebrate{position:fixed;inset:0;z-index:20;background:color-mix(in srgb,var(--bg) 94%,transparent);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:24px;text-align:center;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+@media (prefers-reduced-motion:no-preference){.celebrate:not([hidden]){animation:pop .25s ease-out}}
+@keyframes pop{from{opacity:0;transform:scale(.96)}}
+.cel-art{position:relative;width:240px;height:220px;display:grid;place-items:center}
+.cel-art .confetti{position:absolute;inset:-40px;width:calc(100% + 80px);height:calc(100% + 80px);overflow:visible}
+.cel-art .fig-caught{position:relative}
+.cel-title{font-size:3.4rem;font-weight:600;letter-spacing:-.05em;line-height:1}
+.cel-sub{font-size:1.15rem;margin:6px 0 0}
+.cel-line{margin:0 0 14px;max-width:22rem}
+#nav{gap:5px}
+#nav button{width:56px;height:56px}
+@media (max-width:360px){#nav{gap:4px}#nav button{width:50px;height:50px}}
+
+/* stats */
+.stats-empty{display:grid;place-items:start;margin-bottom:6px}
+.split{display:flex;gap:4px;height:14px}
+.split span{border-radius:999px;min-width:4px}
+.split .sa{background:var(--ink)} .split .sb{background:var(--muted);opacity:.55}
+.split-l{display:flex;justify-content:space-between;font-size:.92rem;color:var(--muted)}
+.split-l b{color:var(--ink);font-weight:600;font-size:1.3rem;margin-right:4px;letter-spacing:-.02em}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tile{background:var(--card);border:1.5px solid var(--card-edge);border-radius:var(--r-card);padding:16px 18px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.tile .tb{font-size:2.3rem;font-weight:500;letter-spacing:-.04em;line-height:1}
+.tile .tl{font-size:.9rem} .tile .ts{font-size:.78rem;color:var(--muted)}
+.week{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;align-items:end;height:120px}
+.wd{display:flex;flex-direction:column;align-items:center;gap:4px;height:100%}
+.wb{flex:1;width:100%;max-width:28px;background:var(--bg);border-radius:8px;display:flex;align-items:flex-end;overflow:hidden}
+.wf{display:block;width:100%;background:var(--ink);border-radius:8px}
+.wn{font-size:.78rem;min-height:1em} .wl{font-size:.8rem;color:var(--muted)}
+.wd.today .wl{color:var(--ink);font-weight:600}
+.bars{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.bars li{display:grid;grid-template-columns:minmax(3.2em,auto) 1fr 2em;align-items:center;gap:10px}
+.bars .bl{font-size:.9rem;min-width:0;max-width:9.5em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bars .track{height:10px;background:var(--bg);border-radius:999px;overflow:hidden}
+.bars .fill{display:block;height:100%;background:var(--ink);border-radius:999px}
+.bars .bn{text-align:right;font-size:.95rem}
+.bars.stacked li{grid-template-columns:1fr 2em;gap:4px 10px}
+.bars.stacked .bl{grid-column:1/-1;max-width:none;white-space:normal;overflow:visible}
+.card.ride .time{font-size:1.6rem}
+.card.ride .time .linkbtn{display:block;margin:4px 0 0 auto;font-size:.78rem}
+
+/* ---- chosen bus row (Now hero, tracker) ---- */
+.badge.xl{font-size:1.45rem;line-height:1.25;padding:4px 12px;border-radius:12px;background:var(--ink);color:var(--bg);border-color:var(--ink);min-width:2.3em}
+.busrow{display:flex;align-items:center;gap:14px;margin-top:16px}
+.busrow-main{display:flex;flex-direction:column;gap:5px;min-width:0}
+.busrow-time{font-size:1.35rem;font-weight:500;letter-spacing:-.02em;line-height:1.1}
+.busrow-time small{font-size:.85rem;font-weight:400;color:var(--muted);margin-left:8px;letter-spacing:0}
+.busrow-where{display:flex;align-items:center;gap:10px;font-size:.92rem;flex-wrap:wrap}
+.strip{display:inline-flex;align-items:center;flex:none}
+.strip .sbus{width:22px;height:22px;border-radius:7px;background:var(--ink);color:var(--bg);display:grid;place-items:center;--inv-bg:var(--ink)}
+.strip .sbus svg{width:16px;height:16px}
+.strip .seg{width:12px;height:2.5px;background:var(--ink);border-radius:2px}
+.strip .sdot{width:8px;height:8px;border-radius:50%;background:var(--ink)}
+.strip .sdot.you{width:15px;height:15px;background:var(--bg);border:3.5px solid var(--ink)}
+.strip .more{padding:0 3px;color:var(--muted);line-height:1}
+.strip.est .seg{background:transparent;width:7px}
+.strip.est .sdot:not(.you){background:var(--muted)}
+.strip.est .sbus{background:var(--muted);--inv-bg:var(--muted)}
+@media (prefers-reduced-motion:no-preference){.strip:not(.est) .sbus{animation:nudge 1.8s ease-in-out infinite}}
+@keyframes nudge{50%{transform:translateX(3px)}}
+.warn-line{margin:8px 0 0;font-size:.9rem;color:var(--run)}
+.ic{fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;width:20px;height:20px;flex:none}
+.card.tap,.rows li.tap{cursor:pointer;-webkit-tap-highlight-color:transparent}
+@media (prefers-reduced-motion:no-preference){.card.tap{transition:transform .12s}.card.tap:active{transform:scale(.985)}}
+.card.tracking{border-color:var(--ink)}
+.card.best.tracking{box-shadow:0 0 0 2px var(--bg),0 0 0 4px var(--ink)}
+
+/* ---- tracker page ---- */
+.round{width:44px;height:44px;border-radius:50%;border:0;background:var(--surface);display:grid;place-items:center;flex:none}
+.round .ic{width:22px;height:22px}
+#track-body .top{justify-content:flex-start;gap:12px}
+.track-actions{display:flex;flex-direction:column;gap:10px;align-items:flex-start}
+.track-actions .note{margin:0 4px}
+.track-actions .note .linkbtn{padding:0;font-size:inherit;color:var(--ink)}
+.btn.remind[aria-pressed="true"] .ic{stroke-width:2.2}
+.panel-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.small{font-size:.85rem}
+.route{list-style:none;margin:2px 0 0;padding:0}
+.rs{display:grid;grid-template-columns:3.1em 30px minmax(0,1fr);align-items:center;min-height:42px}
+.rs .rt{font-size:.82rem;color:var(--muted);text-align:right;padding-right:8px;font-feature-settings:"tnum"}
+.rs .rr{position:relative;align-self:stretch;display:grid;place-items:center}
+.rs .rr::before{content:"";position:absolute;left:50%;top:0;bottom:0;width:3px;margin-left:-1.5px;background:var(--ink)}
+.rs:first-child .rr::before{top:50%}
+.rs:last-child .rr::before{bottom:50%}
+.rs.passed .rr::before{background:var(--line)}
+.rs .rd{width:13px;height:13px;border-radius:50%;background:var(--card);border:3px solid var(--ink);position:relative;z-index:1;box-sizing:border-box}
+.rs .rl{padding-left:10px;display:flex;flex-direction:column;font-size:.95rem;line-height:1.25}
+.rs .rl small{font-size:.78rem;color:var(--muted)}
+.rs.passed .rd{border-color:var(--line);background:var(--line)}
+.rs.passed .rl,.rs.passed .rt{color:var(--muted);opacity:.7}
+.rs.you{min-height:56px}
+.rs.you .rd{width:24px;height:24px;border-width:6px}
+.rs.you .rl b{font-size:1.2rem;font-weight:600;letter-spacing:-.01em}
+.rs.you .rl small{color:var(--ink);font-weight:500}
+.rs.you .rt{color:var(--ink);font-weight:500}
+.rs.bus{min-height:48px}
+.rs.bus .busmark{width:30px;height:30px;border-radius:10px;background:var(--ink);color:var(--bg);display:grid;place-items:center;position:relative;z-index:1;box-shadow:0 0 0 4px var(--card);--inv-bg:var(--ink)}
+.rs.bus .busmark svg{width:21px;height:21px}
+.rs.bus.est .busmark{background:var(--muted);--inv-bg:var(--muted)}
+@media (prefers-reduced-motion:no-preference){.rs.bus:not(.est) .busmark{animation:ping 2s ease-out infinite}}
+@keyframes ping{0%{box-shadow:0 0 0 4px var(--card),0 0 0 4px color-mix(in srgb,var(--ink) 30%,transparent)}100%{box-shadow:0 0 0 4px var(--card),0 0 0 14px transparent}}
+.rs.bus .rl b{font-weight:600}
+.rs.gap .rr::before{background:repeating-linear-gradient(var(--ink) 0 4px,transparent 4px 8px)}
+.rs.gap .rl{color:var(--muted);font-size:.85rem}
+.rs.off .rd{border-color:var(--muted)}
+.rs.off .rl{color:var(--muted)}
+.track-foot{display:flex;justify-content:space-between;align-items:center;gap:8px}
+
+/* ---- Now banner for the tracked bus ---- */
+.prompt.slim{padding:0;background:transparent}
+.slimbtn{width:100%;display:flex;align-items:center;gap:10px;border:0;border-radius:var(--r-btn);background:var(--inv-bg);color:var(--inv-ink);padding:10px 16px 10px 12px;font-size:.95rem;text-align:left}
+.slimbtn .grow{flex:1;min-width:0}
+
+/* ---- in-app reminder ---- */
+.toast{position:fixed;left:50%;top:calc(12px + env(safe-area-inset-top));transform:translateX(-50%);z-index:30;width:min(440px,calc(100% - 24px));background:var(--inv-bg);color:var(--inv-ink);border-radius:18px;padding:12px 16px;display:flex;gap:12px;align-items:center;box-shadow:0 10px 30px rgba(0,0,0,.25);cursor:pointer}
+.toast .ic{width:24px;height:24px}
+.toast b{display:block;font-weight:600}
+.toast span{font-size:.88rem;opacity:.8}
+.hero-num.clock{font-size:clamp(4.6rem,24vw,6.8rem);letter-spacing:-.05em}
+.hero-side{display:flex;flex-direction:column;gap:2px;padding-bottom:.35rem;min-width:0;font-size:1.25rem;line-height:1.15}
+.hero-side .muted{font-size:.95rem}
+.hero-stop{font-size:clamp(2.6rem,12.5vw,3.6rem);font-weight:500;line-height:.98;letter-spacing:-.035em;margin-top:14px;overflow-wrap:anywhere;text-wrap:balance}
+.hero-meta{display:grid;grid-template-columns:auto 1fr;gap:2px 14px;font-size:.95rem;margin-top:10px}
+.hero-meta dt{color:var(--muted)} .hero-meta dd{margin:0}
+.muted{color:var(--muted)}
+.live{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--live);margin-right:6px;vertical-align:1px}
+@media (prefers-reduced-motion:no-preference){.live{animation:pulse 1.6s infinite}}
+@keyframes pulse{50%{opacity:.35}}
+.stamp{border:0;background:transparent;padding:6px 0;font-size:.85rem;color:var(--muted);text-align:left;align-self:flex-start}
+.stamp b{font-weight:500;color:var(--ink);text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px}
+
+/* cards (world-time list) */
+.list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.card{background:var(--card);border:1.5px solid var(--card-edge);border-radius:var(--r-card);padding:16px 20px;position:relative;
+  display:grid;grid-template-columns:1fr auto;align-items:center;gap:2px 12px}
+.card.best{background:var(--inv-bg);border-color:var(--inv-bg);color:var(--inv-ink)}
+.card.best .muted{color:var(--inv-muted)}
+.card .eyebrow{font-size:.85rem;color:var(--muted)}
+.card.best .eyebrow{color:var(--inv-muted)}
+.card .eyebrow.run{color:var(--run)}
+.card .name{font-size:1.2rem;min-width:0;overflow-wrap:anywhere;display:flex;align-items:center;gap:10px}
+.card .sub{font-size:.85rem;color:var(--muted);grid-column:1}
+.card.best .sub{color:var(--inv-muted)}
+.card .time{grid-column:2;grid-row:1/4;font-size:2.3rem;font-weight:500;letter-spacing:-.04em;line-height:1;text-align:right}
+.card .time small{display:block;font-size:.8rem;letter-spacing:0;color:var(--muted);font-weight:400;margin-top:4px}
+.card.best .time small{color:var(--inv-muted)}
+.card .dot{position:absolute;top:14px;right:14px}
+.card.missed{opacity:.45}
+.badge{font-size:.85rem;font-weight:600;border:1.5px solid currentColor;border-radius:8px;padding:0 6px;line-height:1.5;flex:none;min-width:2.6em;text-align:center}
+.hero-alt{margin:10px 0 0;font-size:.95rem;border-top:1px solid var(--line);padding-top:10px}
+.hero-alt b{color:var(--run);font-weight:500}
+.section-h{font-size:.85rem;color:var(--muted);padding:8px 4px 0;display:flex;justify-content:space-between;gap:8px}
+
+/* stop boards */
+.board{background:var(--card);border:1.5px solid var(--card-edge);border-radius:var(--r-card);padding:18px 20px}
+.board h2{font-size:1.6rem;line-height:1.05}
+.board .bh{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:8px}
+.board .walk{text-align:right;font-size:.85rem;color:var(--muted);white-space:nowrap}
+.board .walk b{color:var(--ink);font-weight:500}
+.rows{list-style:none;margin:0;padding:0}
+.rows li{display:grid;grid-template-columns:3.4em 1fr auto;gap:12px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+.rows .t{font-size:1.5rem;font-weight:500;letter-spacing:-.03em}
+.rows .d{font-size:.82rem;color:var(--muted);min-width:0}
+.rows .s{font-size:.85rem;text-align:right;white-space:nowrap}
+.rows .s.run{color:var(--run)} .rows .s.miss{color:var(--muted);text-decoration:line-through}
+.empty{color:var(--muted);font-size:.9rem;padding:10px 0}
+
+/* notices */
+.notice{background:var(--warn-bg);border-radius:16px;padding:12px 16px;font-size:.9rem}
+.note{color:var(--muted);font-size:.82rem;margin:0}
+.note a{color:inherit}
+
+/* bottom nav */
+.nav{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom));display:flex;gap:6px;z-index:5}
+.nav button{width:58px;height:58px;border-radius:50%;border:0;background:var(--surface);display:grid;place-items:center;box-shadow:0 6px 20px rgba(0,0,0,.08)}
+.nav button[aria-current="page"]{background:var(--inv-bg);color:var(--inv-ink)}
+.nav svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+
+/* forms / setup / settings */
+.title{font-size:2.6rem;line-height:1;letter-spacing:-.04em;margin:10px 0 2px}
+.lead{color:var(--muted);margin:0}
+.panel{background:var(--card);border:1.5px solid var(--card-edge);border-radius:var(--r-card);padding:18px 20px;display:flex;flex-direction:column;gap:12px}
+.panel h3{font-size:1.35rem}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-size:.9rem;color:var(--muted)}
+input,textarea{font:inherit;color:var(--ink);background:var(--surface);border:1.5px solid transparent;border-radius:14px;padding:12px 14px;width:100%;min-width:0}
+input:focus{border-color:var(--ink);outline:0}
+input[type=time]{font-size:1.4rem;padding:8px 14px;width:auto;letter-spacing:-.02em}
+.inline{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.btn{border:0;border-radius:var(--r-btn);padding:15px 22px;background:var(--inv-bg);color:var(--inv-ink);font-size:1rem;font-weight:500}
+.btn.ghost{background:var(--surface);color:var(--ink)}
+.btn.small{padding:9px 14px;font-size:.88rem}
+.btn[disabled]{opacity:.5;cursor:default}
+.actions{display:flex;flex-wrap:wrap;gap:8px}
+.status{margin:0;min-height:1.3em;font-size:.95rem}
+.status.bad{color:var(--run)}
+.check{display:flex;gap:10px;align-items:center}
+.check input{width:22px;height:22px;accent-color:var(--ink);margin:0;flex:none}
+details summary{cursor:pointer;color:var(--muted);font-size:.9rem;padding:4px 2px}
+textarea{min-height:84px;font-family:ui-monospace,Menlo,monospace;font-size:.75rem;resize:vertical}
+.progress{font-size:3.4rem;font-weight:500;letter-spacing:-.05em;line-height:1}
+
+.pick{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.pick label{display:grid;grid-template-columns:24px 1fr auto;gap:12px;align-items:center;background:var(--card);border:1.5px solid var(--card-edge);border-radius:20px;padding:14px 16px;cursor:pointer}
+.pick label:has(input:checked){border-color:var(--ink)}
+.pick input{width:22px;height:22px;margin:0;accent-color:var(--ink)}
+.pick .t{display:flex;gap:8px;align-items:center;font-size:1.05rem;min-width:0;overflow-wrap:anywhere}
+.pick .m{color:var(--muted);font-size:.82rem}
+.pick .big{font-size:1.7rem;font-weight:500;letter-spacing:-.04em;white-space:nowrap;text-align:right;line-height:1}
+.pick .big small{display:block;font-size:.72rem;color:var(--muted);letter-spacing:0;font-weight:400}
+.jtitle{font-size:1.5rem;margin-top:8px}
+
+.sgrid{display:grid;grid-template-columns:1fr auto;gap:10px 14px;align-items:center;font-size:.92rem}
+.sgrid input{width:6.2em;padding:8px 10px;font-size:1rem}
+.sgrid input[type=time]{font-size:1rem;width:auto}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ================= NOW ================= -->
+  <main id="view-now" hidden>
+    <div class="top">
+      <span class="logo" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="14" rx="3" fill="var(--inv-ink)"/><rect x="7.5" y="5.5" width="9" height="5" rx="1" fill="var(--inv-bg)"/><circle cx="8.5" cy="14" r="1.2" fill="var(--inv-bg)"/><circle cx="15.5" cy="14" r="1.2" fill="var(--inv-bg)"/><rect x="6" y="17" width="3" height="3" rx="1" fill="var(--inv-ink)"/><rect x="15" y="17" width="3" height="3" rx="1" fill="var(--inv-ink)"/></svg></span>
+      <div class="toggle" id="toggle" role="group" aria-label="Which journey"></div>
+    </div>
+    <div id="error" class="notice" hidden></div>
+    <section class="prompt" id="caught" aria-live="polite" hidden></section>
+    <section class="hero" id="hero" aria-live="polite"></section>
+    <button class="stamp" id="stamp" type="button"></button>
+    <div class="section-h" id="list-h" hidden><span>Other buses · tap to track</span><span>Departs</span></div>
+    <ul class="list" id="list"></ul>
+  </main>
+
+  <!-- ================= STOPS ================= -->
+  <section id="view-stops" hidden>
+    <div class="top"><h1 class="title" id="stops-title" style="margin:0">Your stops</h1><div class="toggle" id="toggle2" role="group" aria-label="Which journey"></div></div>
+    <div class="wrap" id="boards" style="margin-top:12px"></div>
+  </section>
+
+  <!-- ================= PLAN ================= -->
+  <section id="view-plan" hidden>
+    <div class="top"><h1 class="title" style="margin:0">Plan ahead</h1><div class="toggle" id="plan-toggle" role="group" aria-label="Which journey"></div></div>
+    <div class="wrap" style="margin-top:14px">
+      <div class="seg" id="plan-days" role="group" aria-label="Day"></div>
+      <div class="when">
+        <div class="when-mode" id="plan-mode" role="group" aria-label="Arrive by or leave at"></div>
+        <input id="plan-time" type="time" aria-label="Time">
+      </div>
+      <p class="note" id="plan-sum" hidden></p>
+      <section class="hero" id="plan-hero" aria-live="polite"></section>
+      <div class="section-h" id="plan-list-h" hidden><span>All buses</span><span>Departs</span></div>
+      <ul class="list" id="plan-list"></ul>
+      <p class="note">Timetabled times. Live times and delays appear on the Now screen once the bus is on its way.</p>
+      <p class="note">Useful? <a href="https://ko-fi.com/giff82" target="_blank" rel="noopener">Tip me on Ko-fi</a></p>
+    </div>
+  </section>
+
+  <!-- ================= STATS ================= -->
+  <section id="view-stats" hidden>
+    <div class="top"><h1 class="title" style="margin:0">Your rides</h1></div>
+    <div class="wrap" id="stats-body" style="margin-top:10px"></div>
+  </section>
+
+  <!-- ================= TRACK ================= -->
+  <section id="view-track" hidden><div class="wrap" id="track-body"></div></section>
+
+  <!-- ================= SETTINGS ================= -->
+  <section id="view-settings" hidden>
+    <h1 class="title">Settings</h1>
+    <div class="wrap" style="margin-top:12px">
+      <div class="panel"><h3>Times</h3><div class="sgrid" id="sg-times"></div></div>
+      <div class="panel"><h3>Your stops</h3><p class="note">Rename any stop to whatever you'll recognise at a glance, and set how many minutes' walk it is.</p><div id="sg-walks"></div></div>
+      <div class="panel">
+        <h3>Change your journey</h3>
+        <p class="note">Update your home and destination details here.</p>
+        <div class="actions"><button class="btn" id="redo" type="button">Change my journeys</button></div>
+      </div>
+      <div class="panel">
+        <h3>Use on another phone</h3>
+        <p class="note">Send yourself a link. Opening it on another phone sets the app up instantly, with no addresses to type.</p>
+        <div class="actions"><button class="btn" id="share" type="button">Share my setup</button><button class="btn ghost" id="copy-code" type="button">Copy code</button></div>
+        <textarea id="code-out" readonly hidden aria-label="Your setup code"></textarea>
+      </div>
+      <div class="panel">
+        <h3>Put it on your home screen</h3>
+        <p class="note"><b>iPhone:</b> Safari → Share → Add to Home Screen. <b>Android:</b> Chrome → ⋮ → Add to Home screen. It opens straight to your answer.</p>
+      </div>
+      <div class="panel">
+        <h3>Appearance</h3>
+        <div class="seg seg3" id="theme" role="group" aria-label="Appearance">
+          <button type="button" data-theme="auto">Auto</button><button type="button" data-theme="light">Light</button><button type="button" data-theme="dark">Dark</button>
+        </div>
+        <p class="note" id="theme-note">Auto follows your phone's light or dark mode.</p>
+      </div>
+      <div class="panel tip">
+        <h3>Enjoying Which stop?</h3>
+        <p class="note">It's free, with no ads and no tracking. If it's saved you a sprint for the bus, you can buy me a coffee.</p>
+        <div class="actions"><a class="btn" href="https://ko-fi.com/giff82" target="_blank" rel="noopener"><svg class="cup" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h12v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5V9z"/><path d="M16 10.5h1.5a2.5 2.5 0 0 1 0 5H16"/><path d="M8.5 4.5c-.6.9.6 1.6 0 2.5M12 4.5c-.6.9.6 1.6 0 2.5"/></svg>Tip me on Ko-fi</a></div>
+      </div>
+      <p class="note">Live positions and delays from <a href="https://bustimes.org" target="_blank" rel="noopener">bustimes.org</a>, built on operators' open data (Bus Open Data Service). Postcodes from postcodes.io, maps from OpenStreetMap. Buses without a green dot aren't tracked live, so their time is the timetable. Your addresses never leave this phone except to look up places.</p>
+    </div>
+  </section>
+
+  <!-- ================= SETUP ================= -->
+  <section id="view-setup" hidden>
+    <div class="step" data-step="1">
+      <h1 class="title">Which stop?</h1>
+      <p class="lead">Tell us your daily journey. We'll find every bus that works and tell you which stop to head for.</p>
+      <div class="wrap" style="margin-top:16px">
+        <div class="panel">
+          <h3>Home</h3>
+          <div class="field"><label for="home">Postcode, or address with postcode</label><input id="home" autocomplete="street-address" placeholder="e.g. 24 Street Name, AB1 2CD"></div>
+          <div class="actions"><button class="btn ghost small" id="locate" type="button">Use my location</button></div>
+        </div>
+        <div class="panel">
+          <h3>Where to?</h3>
+          <div class="field"><label for="dest">Postcode, street or place</label><input id="dest" placeholder="e.g. Street Name, EF3 4GH"></div>
+          <div class="field"><label for="dest-name">Call it</label><input id="dest-name" value="Work" maxlength="20"></div>
+          <div class="field"><label for="arrive">Arrive by</label><input id="arrive" type="time" value="09:00"></div>
+        </div>
+        <div class="panel">
+          <label class="check" for="want-back"><input id="want-back" type="checkbox" checked> <h3>And back home</h3></label>
+          <div class="field" id="leave-field"><label for="leave">Usually leave at</label><input id="leave" type="time" value="17:00"></div>
+        </div>
+        <button class="btn" id="s1-next" type="button">Find my buses</button>
+        <p class="status" id="s1-status" aria-live="polite"></p>
+        <details>
+          <summary>Got a setup code from another phone?</summary>
+          <textarea id="code-in" aria-label="Paste a setup code"></textarea>
+          <div class="actions" style="margin-top:8px"><button class="btn ghost small" id="use-code" type="button">Use this code</button></div>
+          <p class="status" id="code-status"></p>
+        </details>
+      </div>
+    </div>
+
+    <div class="step" data-step="busy" hidden>
+      <h1 class="title">Finding your buses</h1>
+      <p class="lead">Checking every route near you. This takes about 20 seconds, once.</p>
+      <div class="panel" style="margin-top:16px"><span class="progress" id="busy-n">…</span><p class="status" id="busy-status" aria-live="polite"></p></div>
+    </div>
+
+    <div class="step" data-step="2" hidden>
+      <h1 class="title">Your buses</h1>
+      <p class="lead" id="places"></p>
+      <div class="notice" id="s2-approx" hidden>The walking-route service didn't respond, so walking times are estimates. You can adjust them in Settings.</div>
+      <p class="note" style="margin-top:8px">Quickest door to door first, including both walks. We've ticked the good ones; untick any you'd never use.</p>
+      <div id="opt-sections" class="wrap" style="margin-top:8px"></div>
+      <div class="actions" style="margin-top:14px"><button class="btn ghost" id="back1" type="button">Back</button><button class="btn" id="save" type="button">Looks good</button></div>
+      <p class="status" id="s2-status" aria-live="polite"></p>
+    </div>
+  </section>
+</div>
+
+<nav class="nav" id="nav" aria-label="Views" hidden>
+  <button type="button" data-view="now" aria-label="Now"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg></button>
+  <button type="button" data-view="stops" aria-label="Stops"><svg viewBox="0 0 24 24"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/></svg></button>
+  <button type="button" data-view="plan" aria-label="Plan ahead"><svg viewBox="0 0 24 24"><rect x="4" y="5.5" width="16" height="14.5" rx="3"/><path d="M4 10h16M8.5 3.5v4M15.5 3.5v4"/><path d="M10.5 13.5l2 2 3-3.2"/></svg></button>
+  <button type="button" data-view="stats" aria-label="Your rides"><svg viewBox="0 0 24 24"><path d="M5 20V13M10 20V8M15 20v-5M20 20V5"/></svg></button>
+  <button type="button" data-view="settings" aria-label="Settings"><svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg></button>
+</nav>
+<div id="celebrate" class="celebrate" role="dialog" aria-label="Ride logged" hidden></div>
+<div id="toast" class="toast" role="status" aria-live="assertive" hidden></div>
+
+<script>
+(() => {
+'use strict';
+const API = 'https://bustimes.org';
+const OSRM = 'https://routing.openstreetmap.de/routed-foot';
+const KEY = 'bw2-config';
+const BUFFER = 0.5;          // minutes spare at the stop
+const NEAR_DEST = 1600;      // metres: stops this close to the destination count as "get off here"
+const MAX_DEST_WALK = 20;    // minutes: a direction "goes near" the destination if a stop is within this walk
+const $ = id => document.getElementById(id);
+
+// ---------- storage ----------
+const store = {
+  get(k, d){ try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+  pruneTrips(date){ try { for (let i = localStorage.length - 1; i >= 0; i--) { const k = localStorage.key(i); if (k && k.startsWith('bw2-trips-') && k.slice(-10) < date) localStorage.removeItem(k); } } catch {} }
+};
+
+// ---------- helpers ----------
+function el(tag, props = {}, ...kids){
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(props)) {
+    if (k === 'class') e.className = v;
+    else if (k === 'text') e.textContent = v;
+    else if (k.startsWith('on')) e.addEventListener(k.slice(2), v);
+    else if (v === true) e.setAttribute(k, '');
+    else if (v !== false && v != null) e.setAttribute(k, v);
+  }
+  for (const c of kids) if (c != null) e.append(c);
+  return e;
+}
+const fmt = new Intl.DateTimeFormat('en-GB', {timeZone:'Europe/London', year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit', hourCycle:'h23'});
+function londonNow(){
+  const p = Object.fromEntries(fmt.formatToParts(new Date()).map(x => [x.type, x.value]));
+  return { date:`${p.year}-${p.month}-${p.day}`, mins: +p.hour*60 + +p.minute + +p.second/60 };
+}
+function addDays(date, n){ const d = new Date(date + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); }
+const toMins = s => { const [h, m] = s.split(':').map(Number); return h*60 + m; };
+const startMins = s => { const p = String(s).trim().split(' '); return p.length > 1 ? +p[0]*1440 + toMins(p[1]) : toMins(p[0]); };
+const hhmm = m => { m = Math.round(m); const h = Math.floor(m/60) % 24, mm = ((m % 60) + 60) % 60; return `${String(h).padStart(2,'0')}:${String(mm).padStart(2,'0')}`; };
+const halfMin = m => Math.max(0.5, Math.round(m * 2) / 2);
+const fmtMin = m => `${String(m).replace('.5', '½')} min`;
+const cleanName = s => String(s || '').replace(/\s*\([^)]*\)\s*$/, '').trim();
+function dist(a, b){ // [lon, lat] -> metres
+  const r = Math.PI / 180, dLat = (b[1]-a[1])*r, dLon = (b[0]-a[0])*r;
+  const x = Math.sin(dLat/2)**2 + Math.cos(a[1]*r)*Math.cos(b[1]*r)*Math.sin(dLon/2)**2;
+  return 2 * 6371000 * Math.asin(Math.sqrt(x));
+}
+const estWalk = metres => metres * 1.35 / 75; // minutes, for when walking routes are unavailable
+
+async function getJSON(url){
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`${new URL(url).hostname} replied ${r.status}`);
+  return r.json();
+}
+async function postcode(pc){
+  const clean = String(pc || '').replace(/\s+/g, '').toUpperCase();
+  if (!clean) throw new Error('Enter both postcodes.');
+  let j = null, ok = false;
+  try { const r = await fetch(`https://api.postcodes.io/postcodes/${encodeURIComponent(clean)}`); ok = r.ok; j = await r.json(); }
+  catch { throw new Error('Couldn\'t reach the postcode lookup. Check your connection.'); }
+  if (!ok || !j || !j.result) throw new Error(`"${pc}" isn't a postcode we recognise.`);
+  return { pc: j.result.postcode, lon: j.result.longitude, lat: j.result.latitude, district: j.result.admin_district || '' };
+}
+let approxWalks = false; // set when walking routes were unavailable and we estimated instead
+async function valhalla(origins, dests){
+  const q = { sources: origins.map(c => ({lon:c[0], lat:c[1]})), targets: dests.map(c => ({lon:c[0], lat:c[1]})), costing:'pedestrian' };
+  const j = await getJSON(`https://valhalla1.openstreetmap.de/sources_to_targets?json=${encodeURIComponent(JSON.stringify(q))}`);
+  return j.sources_to_targets.map(row => row.map(c => c && c.time != null ? c.time / 60 : null));
+}
+async function osrm(origins, dests){
+  const coords = [...origins, ...dests].map(c => `${c[0].toFixed(6)},${c[1].toFixed(6)}`).join(';');
+  const src = origins.map((_, i) => i).join(';'), dst = dests.map((_, i) => i + origins.length).join(';');
+  const j = await getJSON(`${OSRM}/table/v1/foot/${coords}?sources=${src}&destinations=${dst}&annotations=duration`);
+  return j.durations.map(row => row.map(s => s == null ? null : s / 60));
+}
+async function walkTable(origins, dests){ // minutes, rows = origins; dests chunked to keep requests small
+  const out = origins.map(() => []);
+  for (let i = 0; i < dests.length; i += 20) {
+    const part = dests.slice(i, i + 20);
+    let m = null;
+    try { m = await valhalla(origins, part); } catch { try { m = await osrm(origins, part); } catch {} }
+    origins.forEach((o, r) => part.forEach((d, k) => {
+      let v = m && m[r] ? m[r][k] : null;
+      if (v == null) { approxWalks = true; v = estWalk(dist(o, d)); }
+      out[r].push(v);
+    }));
+  }
+  return out;
+}
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+async function pool(items, n, fn){
+  const out = new Array(items.length); let i = 0;
+  await Promise.all(Array.from({length: Math.min(n, items.length)}, async () => { while (i < items.length) { const k = i++; try { out[k] = await fn(items[k], k); } catch { out[k] = null; } } }));
+  return out;
+}
+let lastNominatim = 0;
+async function nominatim(params){
+  const wait = 1100 - (Date.now() - lastNominatim); if (wait > 0) await sleep(wait);
+  lastNominatim = Date.now();
+  const j = await getJSON(`https://nominatim.openstreetmap.org/search?${new URLSearchParams(Object.assign({countrycodes:'gb', format:'jsonv2', limit:'1'}, params))}`);
+  return j && j[0] ? { lon: +j[0].lon, lat: +j[0].lat } : null;
+}
+async function geocode(line, pc){
+  const p = await postcode(pc);
+  line = String(line || '').trim();
+  if (line) {
+    const tries = [{street:line, postalcode:p.pc}, {q:`${line}, ${p.pc}`}, {q:`${line}, ${p.district || ''}`}];
+    for (const t of tries) {
+      try {
+        const r = await nominatim(t);
+        if (r && dist([r.lon, r.lat], [p.lon, p.lat]) < 1500) return { pc:p.pc, lon:r.lon, lat:r.lat, label:`${line}, ${p.pc}`, exact:true, district:p.district };
+      } catch {}
+    }
+  }
+  return { pc:p.pc, lon:p.lon, lat:p.lat, label:p.pc, exact:false, tried: !!line, district:p.district };
+}
+async function tripList(svc, date){
+  const key = `bw2-trips-${svc}-${date}`;
+  const cached = store.get(key, null);
+  if (cached) return cached;
+  let url = `${API}/api/trips/?service=${svc}&date=${date}`, out = [];
+  while (url) { const r = await getJSON(url); out = out.concat(r.results.map(t => [t.id, t.start, t.headsign])); url = r.next; }
+  store.set(key, out);
+  return out;
+}
+const tripCache = new Map();
+function tripDetail(id){
+  if (!tripCache.has(id)) tripCache.set(id, getJSON(`${API}/api/trips/${id}/`).catch(e => { tripCache.delete(id); throw e; }));
+  return tripCache.get(id);
+}
+
+let cfg = store.get(KEY, null);
+
+// ---------- config versions ----------
+function migrate(c){
+  if (!c) return null;
+  if (c.v === 3 && c.journeys && c.journeys.out) return c;
+  if (c.v === 2 && Array.isArray(c.stops) && c.work) {
+    return { v:3, home:c.home, work:Object.assign({ name:'Work' }, c.work), run:c.run || 0.5,
+             journeys:{ out:{ arriveBy:c.arriveBy || '09:00', stops:c.stops, alight:c.alight || {} }, back:null } };
+  }
+  return null;
+}
+cfg = migrate(cfg);
+const destName = () => (cfg && cfg.work && cfg.work.name) || 'Work';
+const JOURNEYS = {
+  out:  { from: () => cfg.home, to: () => cfg.work, label: () => `To ${destName()}`, toLabel: () => destName().toLowerCase() },
+  back: { from: () => cfg.work, to: () => cfg.home, label: () => 'Home', toLabel: () => 'home' }
+};
+
+
+// ---------- setup: find buses ----------
+const START_WALK_MAX = 12;  // minutes to the first stop
+let found = null;           // {home, work, journeys:{out:{...}, back:{...}}}
+
+const bbox = (c, m) => { const dLat = m / 111000, dLon = dLat / Math.cos(c[1] * Math.PI / 180); return `ymin=${(c[1]-dLat).toFixed(5)}&ymax=${(c[1]+dLat).toFixed(5)}&xmin=${(c[0]-dLon).toFixed(5)}&xmax=${(c[0]+dLon).toFixed(5)}`; };
+const toStops = j => (j.features || []).filter(f => f.properties && f.properties.url && f.properties.services && f.properties.services.length).map(f => ({
+  atco: f.properties.url.split('/').filter(Boolean).pop(), name: cleanName(f.properties.name), indicator: f.properties.indicator || '',
+  lines: f.properties.services, lon: f.geometry.coordinates[0], lat: f.geometry.coordinates[1] }));
+const stripDistrict = (n, dd) => { n = cleanName(n); return dd && n.toLowerCase().startsWith(dd.toLowerCase() + ' ') && n.length > dd.length + 6 ? n.slice(dd.length + 1) : n; };
+
+// Works out every direct bus from stops near `from` to stops near `to`.
+// time: minutes; mode 'arrive' (arrive by time) or 'leave' (leave at time) — used to sample typical journeys.
+async function analyse({ from, to, fromWord, toWord, time, mode, say }){
+  const F = [from.lon, from.lat], T = [to.lon, to.lat];
+  const sampleAt = mode === 'arrive' ? time - 45 : time + 5;
+  const noBus = `None of the buses near ${fromWord} go near ${toWord}. You might need to change buses, which this app doesn't handle yet.`;
+
+  say(`Finding bus stops near ${fromWord}…`);
+  let near = toStops(await getJSON(`${API}/stops.json?${bbox(F, 750)}`));
+  near.forEach(s => { s.d = dist(F, [s.lon, s.lat]); s.name = stripDistrict(s.name, from.district); });
+  near = near.filter(s => s.d <= 1000).sort((a, b) => a.d - b.d).slice(0, 25);
+  if (!near.length) throw new Error(`We couldn't find any bus stops near ${fromWord}.`);
+
+  say(`Finding the buses that serve ${toWord}…`);
+  const destStops = toStops(await getJSON(`${API}/stops.json?${bbox(T, 1100)}`)).filter(s => dist(T, [s.lon, s.lat]) <= NEAR_DEST);
+  const destLines = new Set(destStops.flatMap(s => s.lines));
+  near = near.filter(s => s.lines.some(l => destLines.has(l)));
+  if (!near.length) throw new Error(noBus);
+
+  say(`Working out the walk to each stop near ${fromWord}…`);
+  const m = await walkTable([F], near.map(s => [s.lon, s.lat]));
+  near.forEach((s, i) => s.walk = halfMin(m[0][i]));
+  near = near.filter(s => s.walk <= START_WALK_MAX);
+  if (!near.length) throw new Error(`No useful bus stops within a ${START_WALK_MAX}-minute walk of ${fromWord}.`);
+  const byAtco = new Map(near.map(s => [s.atco, s]));
+
+  say(`Looking up the routes near ${fromWord}…`);
+  const services = new Map();
+  await pool(near, 4, async s => {
+    const j = await getJSON(`${API}/api/services/?stops=${encodeURIComponent(s.atco)}`);
+    for (const v of j.results || []) if (destLines.has(v.line_name)) services.set(v.id, v);
+  });
+  const svcList = [...services.values()];
+  if (!svcList.length) throw new Error('We couldn\'t find route details for those stops. Try again in a minute.');
+
+  const today = londonNow().date, raw = [], cands = new Map();
+  let done = 0;
+  await pool(svcList, 3, async svc => {
+    let trips = [];
+    for (let i = 0; i < 4 && !trips.length; i++) trips = await tripList(svc.id, addDays(today, i));
+    const heads = new Map();
+    for (const tr of trips) if (tr[2]) { if (!heads.has(tr[2])) heads.set(tr[2], []); heads.get(tr[2]).push(tr); }
+    for (const [h, list] of heads) {
+      if (list.length < 3) continue; // school runs and other rare journeys
+      const sample = list.slice().sort((a, b) => Math.abs(startMins(a[1]) - sampleAt) - Math.abs(startMins(b[1]) - sampleAt))[0];
+      const d = await tripDetail(sample[0]).catch(() => null);
+      if (!d || !d.times) continue;
+      const times = d.times, start = startMins(sample[1]) % 1440;
+      times.forEach((x, i) => {
+        const stop = byAtco.get(x.stop.atco_code), bt = x.aimed_departure_time || x.aimed_arrival_time;
+        if (!stop || x.pick_up === false || !bt) return;
+        const later = [];
+        for (const y of times.slice(i + 1)) {
+          const t = y.aimed_arrival_time || y.aimed_departure_time;
+          if (y.set_down === false || !t || !y.stop.location || dist(y.stop.location, T) > NEAR_DEST) continue;
+          later.push({ atco: y.stop.atco_code, t: toMins(t) });
+          cands.set(y.stop.atco_code, { name: stripDistrict(y.stop.name, to.district), lon: y.stop.location[0], lat: y.stop.location[1] });
+        }
+        if (!later.length) return;
+        let off = toMins(bt) - start; if (off < 0) off += 1440;
+        raw.push({ stop, svc, h, off, board: toMins(bt), later, perDay: list.length });
+      });
+    }
+    say(`Checking routes to ${toWord}… ${++done} of ${svcList.length}`);
+  });
+  if (!raw.length) throw new Error(noBus);
+
+  say(`Working out the walk to ${toWord}…`);
+  const ids = [...cands.keys()];
+  const wm = await walkTable(ids.map(a => [cands.get(a).lon, cands.get(a).lat]), [T]);
+  ids.forEach((a, i) => cands.get(a).walk = halfMin(wm[i][0]));
+
+  const opts = new Map();
+  for (const r of raw) {
+    let best = null;
+    for (const l of r.later) {
+      const c = cands.get(l.atco); if (!c || c.walk > MAX_DEST_WALK) continue;
+      let ride = l.t - r.board; if (ride < 0) ride += 1440;
+      const total = r.stop.walk + ride + c.walk;
+      if (!best || total < best.total) best = { total, ride, off: c.name, walk: c.walk };
+    }
+    if (!best) continue;
+    const key = `${r.stop.atco}|${r.svc.id}`;
+    const o = opts.get(key) || { key, stop: r.stop, svc: r.svc, heads: [], best, perDay: 0 };
+    if (!o.heads.some(x => x.h === r.h)) { o.heads.push({ h: r.h, off: r.off }); o.perDay += r.perDay; }
+    if (best.total < o.best.total) o.best = best;
+    opts.set(key, o);
+  }
+  const options = [...opts.values()].sort((a, b) => (Math.round(a.best.total) - Math.round(b.best.total)) || (a.stop.walk - b.stop.walk));
+  if (!options.length) throw new Error(`None of the buses near ${fromWord} stop within a 20-minute walk of ${toWord}.`);
+  const alight = {};
+  for (const a of ids) if (cands.get(a).walk <= MAX_DEST_WALK + 5) alight[a] = [cands.get(a).name, cands.get(a).walk];
+  return { options, alight };
+}
+
+
+// ---------- live data ----------
+// Index of the last stop the bus should have left by `nowMins`, from the timetable (+ delay). -1 = not started.
+function timetablePos(times, upto, nowMins, delay){
+  let last = -1, base = null;
+  for (let k = 0; k <= upto && k < times.length; k++) {
+    const ts = times[k].aimed_departure_time || times[k].aimed_arrival_time; if (!ts) continue;
+    let t = toMins(ts); if (base === null) base = t; if (t < base - 60) t += 1440;
+    if (t + delay <= nowMins) last = k; else break;
+  }
+  return last;
+}
+let buses = [], lastOk = null, busy = false;
+async function load(){
+  const key = currentKey(), j = cfg.journeys[key];
+  const now = londonNow();
+  store.pruneTrips(now.date);
+  const dest = JOURNEYS[key].to(), D = [dest.lon, dest.lat];
+  const ids = [...new Set(j.stops.flatMap(s => s.services.map(v => v.id)))];
+  const vehicles = await getJSON(`${API}/vehicles.json?service=${ids.join(',')}`);
+  const byTrip = new Map();
+  for (const v of vehicles) if (v.trip_id) byTrip.set(v.trip_id, v);
+
+  const out = [];
+  for (const stop of j.stops) {
+    for (const svc of stop.services) {
+      const trips = await tripList(svc.id, now.date);
+      const heads = new Map(svc.heads.map(h => [h.h, h.off]));
+      const wanted = new Set();
+      for (const [id, start, h] of trips) {
+        if (!heads.has(h)) continue;
+        const b = startMins(start) + heads.get(h);
+        if (b >= now.mins - 25 && b <= now.mins + 90) wanted.add(id);
+      }
+      for (const [tid, v] of byTrip) if (v.service_id === svc.id) wanted.add(tid);
+
+      const details = await Promise.all([...wanted].map(id => tripDetail(id).catch(() => null)));
+      for (const d of details) {
+        if (!d || !d.times || !heads.has(d.headsign)) continue;
+        const idx = d.times.findIndex(x => x.stop.atco_code === stop.atco && x.pick_up !== false);
+        if (idx < 0) continue;
+        const aimedStr = d.times[idx].aimed_departure_time || d.times[idx].aimed_arrival_time;
+        if (!aimedStr) continue;
+        const aimed = toMins(aimedStr);
+        let v = byTrip.get(d.id);
+        if (v && Math.abs((v.delay || 0) / 60) > 40) v = null; // tracking matched to the wrong journey
+        let delay = 0, live = false, where = '', stopsAway = null, pIdx = -1, estimated = false;
+        if (v) {
+          live = true;
+          delay = (v.delay || 0) / 60;
+          const prev = v.progress && v.progress.prev_stop;
+          pIdx = prev ? d.times.findIndex(x => x.stop.atco_code === prev) : -1;
+          if (pIdx > idx || (pIdx === idx && idx > 0)) continue; // already gone past
+          if (pIdx >= 0) { stopsAway = idx - pIdx; where = `Near ${cleanName(d.times[pIdx].stop.name)}`; }
+        } else {
+          // not tracked: estimate where the bus should be from the timetable
+          pIdx = timetablePos(d.times, idx, now.mins, 0);
+          if (pIdx >= 0 && pIdx < idx) { stopsAway = idx - pIdx; estimated = true; }
+        }
+        const expected = aimed + delay;
+        if (expected < now.mins - 1.5 || expected > now.mins + 120) continue;
+        let arrive = null, off = '';
+        for (let k = idx + 1; k < d.times.length; k++) {
+          const x = d.times[k], ts = x.aimed_arrival_time || x.aimed_departure_time;
+          if (x.set_down === false || !ts) continue;
+          const a = j.alight[x.stop.atco_code];
+          let w = null, name = '';
+          if (a) { w = a[1]; name = a[0]; }
+          else if (x.stop.location) { const m = dist(x.stop.location, D); if (m <= NEAR_DEST) { w = estWalk(m); name = stripDistrict(x.stop.name, dest.district); } }
+          if (w === null) continue;
+          let t = toMins(ts); if (t < aimed - 60) t += 1440;
+          const at = t + delay + w;
+          if (arrive === null || at < arrive) { arrive = at; off = name; }
+        }
+        if (arrive === null) continue;
+        out.push({ stop, line:svc.line, aimed, delay, live, where, stopsAway, estimated, pIdx, idx, tripId: d.id, svcId: svc.id, times: d.times, expected, arrive, off });
+      }
+    }
+  }
+  if (key !== currentKey()) return; // switched while loading
+  const seen = new Set();
+  buses = out.sort((a, b) => a.expected - b.expected).filter(b => { const k = `${b.stop.atco}|${b.line}|${Math.round(b.aimed)}`; if (seen.has(k)) return false; seen.add(k); return true; });
+  lastOk = new Date();
+}
+
+
+// Pictogram walker / runner. Original drawing in the classic pedestrian-sign style:
+// solid round head, thick round-capped limbs, jointed at hip/knee and shoulder/elbow.
+// Animated with SMIL so it also works as a standalone .svg (and later in a widget).
+function figureSVG(kind, opts = {}){
+  const run = kind === 'run';
+  const dur = run ? 0.62 : 1.05;                       // seconds per stride
+  const sw = 6.4;                                      // limb thickness
+  const H = [30, 36], N = [31.5, 18.5], S = [31.5, 21]; // hip, neck, shoulder
+  const thigh = 12.5, shin = 13, upper = 9.5, fore = 8.5;
+  const T = run ? '0;.25;.5;.7;.85;1' : '0;.25;.5;.75;1';
+  const sp = ' keySplines="' + Array(T.split(';').length - 1).fill('.45 0 .55 1').join(';') + '" calcMode="spline"';
+  const rot = (vals, cx, cy, begin = 0) =>
+    `<animateTransform attributeName="transform" type="rotate" dur="${dur}s" begin="${begin}s" repeatCount="indefinite" keyTimes="${T}"${sp} values="${vals.map(v => `${v} ${cx} ${cy}`).join(';')}"/>`;
+
+  // [hip angle, knee angle] per key time; +ve = clockwise = limb end moves backward (figure faces right)
+  const legHip  = run ? [-89, -29, 16, 6, -49, -89] : [-24, 2, 24, 0, -24];
+  const legKnee = run ? [ 70, 15, 15, 75, 110, 70]  : [  2, 6, 14, 42, 2];
+  const armSh   = run ? [ 36, 6, -69, -40, 10, 36]  : [ 26, 0, -26, 0, 26];
+  const armEl   = run ? [-80, -85, -90, -88, -82, -80] : [-14, -22, -30, -22, -14];
+  const bob     = run ? ['0 1.6', '0 -1.4', '0 1.6', '0 -1.6', '0 -0.4', '0 1.6'] : ['0 0.9', '0 -0.9', '0 0.9', '0 -0.9', '0 0.9'];
+  const lean = run ? 14 : 4;
+
+  const K = [H[0], H[1] + thigh];            // knee (unrotated)
+  const E = [S[0], S[1] + upper];            // elbow (unrotated)
+  const gap = opts.gap || 'var(--bg, #fff)';       // thin knockout so the near limbs read in front, like a road sign
+  const seg = (x1, y1, x2, y2, near) => (near ? `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${gap}" stroke-width="${sw + 2.4}"/>` : '') + `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"/>`;
+  const leg = (begin, near) => `<g>${rot(legHip, ...H, begin)}${seg(H[0], H[1], K[0], K[1], near)}
+      <g>${rot(legKnee, ...K, begin)}${seg(K[0], K[1], K[0], K[1] + shin, near)}</g>${near ? `<line x1="${H[0]}" y1="${H[1]}" x2="${K[0]}" y2="${K[1]}"/>` : ''}</g>`;
+  const arm = (begin, near) => `<g>${rot(armSh, ...S, begin)}${seg(S[0], S[1], E[0], E[1], near)}
+      <g>${rot(armEl, ...E, begin)}${seg(E[0], E[1], E[0], E[1] + fore, near)}</g>${near ? `<line x1="${S[0]}" y1="${S[1]}" x2="${E[0]}" y2="${E[1]}"/>` : ''}</g>`;
+  const half = -dur / 2;
+  const label = opts.label || (run ? 'Running' : 'Walking');
+  return `<svg class="fig fig-${kind}" viewBox="0 0 64 64" width="${opts.size || 64}" height="${opts.size || 64}" role="img" aria-label="${label}" xmlns="http://www.w3.org/2000/svg">
+  <g fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round">
+   <g><animateTransform attributeName="transform" type="translate" dur="${dur}s" repeatCount="indefinite" keyTimes="${T}"${sp} values="${bob.join(';')}"/>
+    <g transform="rotate(${lean} ${H[0]} ${H[1]})">
+     ${leg(half, false)}${arm(0, false)}
+     <line x1="${N[0]}" y1="${N[1]}" x2="${H[0]}" y2="${H[1]}" stroke-width="${sw + 2.6}"/>
+     <circle cx="${N[0] + 2.4}" cy="${N[1] - 8}" r="6.2" fill="currentColor" stroke="none"/>
+     ${leg(0, true)}${arm(half, true)}
+    </g>
+   </g>
+  </g>
+</svg>`;
+}
+
+
+// Celebrating pictogram: crouch, jump with both arms punching up, land. Same build as the walker/runner.
+function cheerSVG(opts = {}){
+  const dur = 0.95, sw = 6.4, size = opts.size || 64;
+  const H = [32, 38], N = [32, 21];
+  const thigh = 12, shin = 12.5, upper = 9, fore = 8.5;
+  const K = [H[0], H[1] + thigh];
+  const T = '0;.32;.55;.8;1';
+  const sp = ' keySplines="' + Array(4).fill('.4 0 .6 1').join(';') + '" calcMode="spline"';
+  const rot = (vals, cx, cy) => `<animateTransform attributeName="transform" type="rotate" dur="${dur}s" repeatCount="indefinite" keyTimes="${T}"${sp} values="${vals.map(v => `${v} ${cx} ${cy}`).join(';')}"/>`;
+  const gap = opts.gap || 'var(--bg, #fff)';
+  const seg = (x1, y1, x2, y2, near) => (near ? `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${gap}" stroke-width="${sw + 2.4}"/>` : '') + `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"/>`;
+  // crouch (knees bent, fists by the shoulders) -> jump (legs spread, arms straight up in a V) -> land
+  const L = { hip: [-36, -22, -20, -36, -36], knee: [ 32, 6, 4, 32, 32] };
+  const R = { hip: [ 36,  22,  20,  36,  36], knee: [-32, -6, -4, -32, -32] };
+  const LA = { sh: [-112, -146, -142, -112, -112], el: [-62, -4, -8, -62, -62] };
+  const RA = { sh: [ 112,  146,  142,  112,  112], el: [ 62,  4,  8,  62,  62] };
+  const bob = ['0 3', '0 -11', '0 -8', '0 3', '0 3'];
+  const leg = (P, near) => `<g>${rot(P.hip, ...H)}${seg(H[0], H[1], K[0], K[1], near)}<g>${rot(P.knee, ...K)}${seg(K[0], K[1], K[0], K[1] + shin, near)}</g></g>`;
+  const arm = (P, Sx) => { const S = [Sx, 23.5], E = [Sx, 23.5 + upper];
+    return `<g>${rot(P.sh, ...S)}<line x1="${S[0]}" y1="${S[1]}" x2="${E[0]}" y2="${E[1]}"/><g>${rot(P.el, ...E)}<line x1="${E[0]}" y1="${E[1]}" x2="${E[0]}" y2="${E[1] + fore}"/></g></g>`; };
+  const shadow = `<ellipse cx="32" cy="65.5" rx="11" ry="1.6" fill="currentColor" opacity=".18"><animate attributeName="rx" dur="${dur}s" repeatCount="indefinite" keyTimes="${T}" values="11;6;7;11;11"/></ellipse>`;
+  return `<svg class="fig fig-cheer" viewBox="0 -12 64 80" width="${size}" height="${Math.round(size * 80 / 64)}" role="img" aria-label="${opts.label || 'Celebrating'}" xmlns="http://www.w3.org/2000/svg">
+  ${shadow}
+  <g fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round">
+   <g><animateTransform attributeName="transform" type="translate" dur="${dur}s" repeatCount="indefinite" keyTimes="${T}"${sp} values="${bob.join(';')}"/>
+     ${leg(R, false)}${leg(L, false)}
+     ${arm(RA, 29.5)}${arm(LA, 34.5)}
+     <line x1="${N[0]}" y1="${N[1]}" x2="${H[0]}" y2="${H[1]}" stroke-width="${sw + 3.4}"/>
+     <circle cx="${N[0]}" cy="${N[1] - 8.6}" r="6.2" fill="currentColor" stroke="none"/>
+   </g>
+  </g>
+</svg>`;
+}
+// Confetti burst (plays once per insertion). Mono pieces plus a few in the app's accent colours.
+function confettiSVG(n = 26){
+  const cols = ['currentColor', 'currentColor', 'var(--run, #E5483B)', 'var(--live, #22A447)', 'var(--muted, #777)'];
+  let out = '';
+  for (let i = 0; i < n; i++) {
+    const a = (Math.PI * 2 * i) / n + (Math.random() - .5) * .5, r = 70 + Math.random() * 55;
+    const x = Math.cos(a) * r, y = Math.sin(a) * r * .75 - 20, fall = 40 + Math.random() * 40;
+    const d = (1.3 + Math.random() * .6).toFixed(2), rotv = Math.round((Math.random() - .5) * 720);
+    const w = 3 + Math.random() * 4, h = Math.random() < .5 ? w : 2.2;
+    const c = cols[i % cols.length];
+    out += `<g><animateTransform attributeName="transform" type="translate" dur="${d}s" fill="freeze" calcMode="spline" keyTimes="0;.45;1" keySplines=".1 .8 .3 1;.5 0 .9 .6" values="0 0;${x.toFixed(1)} ${y.toFixed(1)};${(x * 1.15).toFixed(1)} ${(y + fall).toFixed(1)}"/>
+      <rect x="${(-w / 2).toFixed(1)}" y="${(-h / 2).toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" rx="${h < 3 ? 1 : w / 2}" fill="${c}">
+        <animateTransform attributeName="transform" type="rotate" dur="${d}s" fill="freeze" values="0;${rotv}"/>
+        <animate attributeName="opacity" dur="${d}s" fill="freeze" keyTimes="0;.7;1" values="1;1;0"/></rect></g>`;
+  }
+  return `<svg class="confetti" viewBox="-160 -140 320 280" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">${out}</svg>`;
+}
+
+
+// "Caught it": front-on bus pictogram (same solid style as the walk/run figures, knockouts in the
+// background colour) with a green tick badge that pops on and draws its tick. Plays once and holds.
+function busTickSVG(opts = {}){
+  const size = opts.size || 64, gap = opts.gap || 'var(--bg, #fff)', ok = opts.ok || 'var(--live, #22A447)', still = !!opts.still;
+  const A = (s) => still ? '' : s;
+  const spl = 'calcMode="spline"';
+  return `<svg class="fig fig-caught" viewBox="0 0 64 64" width="${size}" height="${size}" role="img" aria-label="${opts.label || 'Caught the bus'}" xmlns="http://www.w3.org/2000/svg">
+  <g>${A(`<animateTransform attributeName="transform" type="translate" dur=".5s" fill="freeze" ${spl} keyTimes="0;.65;1" keySplines=".3 0 .7 1;.3 0 .5 1" values="0 -9;0 1.6;0 0"/><animate attributeName="opacity" dur=".18s" fill="freeze" values="0;1"/>`)}
+    <rect x="7.5" y="13" width="5" height="9" rx="2.5" fill="currentColor"/>
+    <rect x="51.5" y="13" width="5" height="9" rx="2.5" fill="currentColor"/>
+    <rect x="14" y="47" width="9" height="10" rx="3" fill="currentColor"/>
+    <rect x="41" y="47" width="9" height="10" rx="3" fill="currentColor"/>
+    <rect x="11" y="5" width="42" height="46" rx="9" fill="currentColor"/>
+    <rect x="21" y="8.5" width="22" height="3" rx="1.5" fill="${gap}"/>
+    <rect x="16" y="14.5" width="32" height="18" rx="3.5" fill="${gap}"/>
+    <circle cx="19.5" cy="40.5" r="3.4" fill="${gap}"/>
+    <circle cx="44.5" cy="40.5" r="3.4" fill="${gap}"/>
+    <rect x="26.5" y="39" width="11" height="3" rx="1.5" fill="${gap}"/>
+  </g>
+  <g transform="translate(48 47)"><g ${still ? '' : 'transform="scale(0)"'}>${A(`<animateTransform attributeName="transform" type="scale" begin=".35s" dur=".42s" fill="freeze" ${spl} keyTimes="0;.6;1" keySplines=".2 .8 .4 1;.4 0 .6 1" values="0;1.18;1"/>`)}
+    <g transform="translate(-48 -47)">
+      <circle cx="48" cy="47" r="12.5" fill="${ok}" stroke="${gap}" stroke-width="4"/>
+      <path d="M42 47.2l4.2 4.2 8-8.6" fill="none" stroke="${gap}" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round" pathLength="1" stroke-dasharray="1" stroke-dashoffset="${still ? 0 : 1}">${A(`<animate attributeName="stroke-dashoffset" begin=".62s" dur=".32s" fill="freeze" ${spl} keyTimes="0;1" keySplines=".4 0 .2 1" values="1;0"/>`)}</path>
+    </g>
+  </g></g>
+</svg>`;
+}
+
+
+// =====================================================================
+// v2 UI
+// =====================================================================
+const PC_RE = /\b([A-Z]{1,2}\d[A-Z\d]?)\s*(\d[A-Z]{2})\b/i;
+let here = null; // {lon, lat, pc, district} from "Use my location"
+
+function status(id, text, bad){ const s = $(id); s.textContent = text || ''; s.classList.toggle('bad', !!bad); }
+
+// One box: "24 Street Name, AB1 2CD", "EF3 4GH", or "Street Name, Town"
+async function place(text){
+  text = String(text || '').trim();
+  if (!text) throw new Error('Fill in both places.');
+  const m = text.match(PC_RE);
+  if (m) {
+    const line = text.replace(m[0], '').replace(/^[\s,]+|[\s,]+$/g, '');
+    const p = await geocode(line, `${m[1]} ${m[2]}`);
+    p.line = line;
+    return p;
+  }
+  let r = null;
+  try { r = await nominatim({ q: text }); } catch {}
+  if (!r) throw new Error(`We couldn't find "${text}". Try adding the postcode.`);
+  let pc = '', district = '';
+  try {
+    const j = await getJSON(`https://api.postcodes.io/postcodes?lon=${r.lon}&lat=${r.lat}&radius=1000&limit=1`);
+    if (j.result && j.result[0]) { pc = j.result[0].postcode; district = j.result[0].admin_district || ''; }
+  } catch {}
+  return { pc, lon: r.lon, lat: r.lat, label: text, exact: true, district, line: text, free: true };
+}
+
+$('locate').addEventListener('click', e => {
+  const btn = e.currentTarget;
+  if (!navigator.geolocation) { status('s1-status', 'This browser can\'t share your location. Type your postcode instead.', true); return; }
+  btn.disabled = true; btn.textContent = 'Finding you…';
+  navigator.geolocation.getCurrentPosition(async pos => {
+    const lon = pos.coords.longitude, lat = pos.coords.latitude;
+    let pc = '', district = '';
+    try { const j = await getJSON(`https://api.postcodes.io/postcodes?lon=${lon}&lat=${lat}&radius=500&limit=1`); if (j.result && j.result[0]) { pc = j.result[0].postcode; district = j.result[0].admin_district || ''; } } catch {}
+    here = { lon, lat, pc, district };
+    $('home').value = pc ? `My location (${pc})` : 'My location';
+    btn.disabled = false; btn.textContent = 'Use my location';
+  }, () => {
+    btn.disabled = false; btn.textContent = 'Use my location';
+    status('s1-status', 'Location wasn\'t shared. Type your postcode instead.', true);
+  }, { enableHighAccuracy: true, timeout: 15000 });
+});
+$('home').addEventListener('input', () => { here = null; });
+
+// ---------- views ----------
+let view = null;
+function show(v){
+  view = v;
+  for (const k of ['now', 'stops', 'plan', 'stats', 'settings', 'setup', 'track']) $('view-' + k).hidden = k !== v;
+  $('nav').hidden = v === 'setup' || v === 'track';
+  document.querySelectorAll('#nav button').forEach(b => { if (b.dataset.view === v) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
+  window.scrollTo(0, 0);
+  if (v === 'settings') buildSettings();
+  if (v === 'plan') { if (!plan.key) planDefaults(); planControls(); runPlan(); }
+  else if (v === 'stats') { renderStats(); }
+  else if (v === 'track') { lastHTML.delete($('track-body')); renderTrack(); loadTrack(); }
+  else if (v !== 'setup') { render(); refresh(); }
+}
+document.querySelectorAll('#nav button').forEach(b => b.addEventListener('click', () => show(b.dataset.view)));
+function step(s){ document.querySelectorAll('.step').forEach(x => x.hidden = x.dataset.step != s); window.scrollTo(0, 0); }
+
+// ---------- setup ----------
+async function findBuses(){
+  const say = t => {
+    status('busy-status', t);
+    const m = String(t).match(/(\d+) of (\d+)/);
+    $('busy-n').textContent = m ? `${Math.round(100 * m[1] / m[2])}%` : '…';
+  };
+  status('s1-status', 'Finding your places…');
+  let home;
+  if (here && $('home').value.startsWith('My location')) home = { pc: here.pc, lon: here.lon, lat: here.lat, label: 'your location', exact: true, district: here.district, line: '', gps: true };
+  else home = await place($('home').value);
+  const work = await place($('dest').value);
+  home.input = $('home').value.trim(); work.input = $('dest').value.trim();
+  work.name = $('dest-name').value.trim() || 'Work';
+  if (dist([home.lon, home.lat], [work.lon, work.lat]) < 500) throw new Error('Those two places are a short walk apart. Check them and try again.');
+  status('s1-status', '');
+  const arriveBy = $('arrive').value || '09:00';
+  const wantBack = $('want-back').checked, leaveAt = $('leave').value || '17:00';
+  const w = work.name.toLowerCase();
+  step('busy');
+  try {
+    approxWalks = false;
+    const out = await analyse({ from: home, to: work, fromWord: 'home', toWord: w, time: toMins(arriveBy), mode: 'arrive', say });
+    out.arriveBy = arriveBy;
+    let back = null;
+    if (wantBack) {
+      back = await analyse({ from: work, to: home, fromWord: w, toWord: 'home', time: toMins(leaveAt), mode: 'leave', say: t => say(`Journey home: ${t.charAt(0).toLowerCase()}${t.slice(1)}`) });
+      back.leaveAt = leaveAt;
+    }
+    found = { home, work, journeys: { out, back }, approx: approxWalks };
+  } catch (e) { step(1); throw e; }
+  renderOptions();
+  step(2);
+}
+
+function optionList(jKey, title, options){
+  const prevJ = cfg && cfg.journeys && cfg.journeys[jKey];
+  const prev = new Set(prevJ ? prevJ.stops.flatMap(s => s.services.map(v => `${s.atco}|${v.id}`)) : []);
+  const fastest = options[0].best.total;
+  const best = el('ul', { class: 'pick' }), more = el('ul', { class: 'pick', style: 'margin-top:10px' });
+  let nBest = 0; const shown = new Set();
+  for (const o of options) {
+    const good = o.best.total <= fastest + 8 && nBest < 6 && !shown.has(o.svc.id);
+    if (good) shown.add(o.svc.id);
+    const checked = prev.size ? prev.has(o.key) : good;
+    const freq = o.perDay >= 40 ? 'frequent' : `about ${o.perDay} a day`;
+    const li = el('li', {}, el('label', {},
+      el('input', { type: 'checkbox', value: o.key, 'data-j': jKey, checked }),
+      el('div', {},
+        el('div', { class: 't' }, el('span', { class: 'badge', text: o.svc.line_name }), el('span', { text: o.stop.name })),
+        el('div', { class: 'm', text: `${fmtMin(o.stop.walk)} walk${o.stop.indicator ? ' · ' + o.stop.indicator : ''} · ${freq}` }),
+        el('div', { class: 'm', text: `Off at ${o.best.off}, ${fmtMin(o.best.walk)} walk` })),
+      el('div', { class: 'big' }, `${Math.round(o.best.total)}`, el('small', { text: 'min total' }))));
+    if (good) { best.append(li); nBest++; } else more.append(li);
+  }
+  const sec = el('section', { class: 'wrap' }, el('h2', { class: 'jtitle', text: title }), best);
+  if (more.children.length) sec.append(el('details', {}, el('summary', { text: `${more.children.length} more, slower or further to walk` }), more));
+  return sec;
+}
+function renderOptions(){
+  const { home, work, journeys } = found;
+  const nm = (p, fallback) => p.gps ? 'your location' : p.exact ? (p.input || p.label) : `the middle of ${p.pc}`;
+  $('places').textContent = `From ${nm(home)} to ${nm(work)}.`;
+  $('s2-approx').hidden = !found.approx;
+  const box = $('opt-sections'); box.textContent = '';
+  box.append(optionList('out', `To ${work.name.toLowerCase()} · by ${journeys.out.arriveBy}`, journeys.out.options));
+  if (journeys.back) box.append(optionList('back', `Home · from ${journeys.back.leaveAt}`, journeys.back.options));
+}
+async function guarded(btn, id, fn){
+  btn.disabled = true;
+  try { await fn(); } catch (e) { status(id, e.message || String(e), true); } finally { btn.disabled = false; }
+}
+$('s1-next').addEventListener('click', e => guarded(e.currentTarget, 's1-status', findBuses));
+$('want-back').addEventListener('change', () => $('leave-field').hidden = !$('want-back').checked);
+$('back1').addEventListener('click', () => step(1));
+
+function buildJourney(jKey, j){
+  const keys = new Set([...document.querySelectorAll(`#opt-sections input[data-j="${jKey}"]:checked`)].map(i => i.value));
+  const stops = new Map();
+  for (const o of j.options) {
+    if (!keys.has(o.key)) continue;
+    const s = stops.get(o.stop.atco) || { atco: o.stop.atco, name: o.stop.name, indicator: o.stop.indicator, lon: o.stop.lon, lat: o.stop.lat, walk: o.stop.walk, services: [] };
+    s.services.push({ id: o.svc.id, line: o.svc.line_name, heads: o.heads });
+    stops.set(o.stop.atco, s);
+  }
+  return { stops: [...stops.values()].sort((a, b) => a.walk - b.walk), alight: j.alight };
+}
+$('save').addEventListener('click', () => {
+  const out = buildJourney('out', found.journeys.out);
+  if (!out.stops.length) { status('s2-status', `Tick at least one bus to ${found.work.name.toLowerCase()}.`, true); return; }
+  out.arriveBy = found.journeys.out.arriveBy;
+  let back = null;
+  if (found.journeys.back) {
+    back = buildJourney('back', found.journeys.back);
+    if (!back.stops.length) { status('s2-status', 'Tick at least one bus home, or go back and untick "And back home".', true); return; }
+    back.leaveAt = found.journeys.back.leaveAt;
+  }
+  const strip = p => ({ pc: p.pc, lon: p.lon, lat: p.lat, label: p.label, exact: p.exact, district: p.district, line: p.line, input: p.input, name: p.name });
+  cfg = { v: 3, home: strip(found.home), work: strip(found.work), run: (cfg && cfg.run) || 0.5, journeys: { out, back } };
+  store.set(KEY, cfg);
+  manualJourney = null; shownKey = null; buses = []; lastOk = null;
+  show('now');
+});
+
+// ---------- setup codes & sharing ----------
+const encode = c => 'WS3.' + btoa(unescape(encodeURIComponent(JSON.stringify(c)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+function decode(code){
+  const s = String(code || '').trim().replace(/^.*#setup=/, '').replace(/^WS\d\./, '').replace(/-/g, '+').replace(/_/g, '/');
+  const c = migrate(JSON.parse(decodeURIComponent(escape(atob(decodeURIComponent(s))))));
+  if (!c) throw new Error('bad');
+  return c;
+}
+const shareLink = () => `${location.origin === 'null' || location.protocol === 'file:' ? location.href.split('#')[0] : location.origin + location.pathname}#setup=${encode(cfg)}`;
+$('use-code').addEventListener('click', () => {
+  try { cfg = decode($('code-in').value); store.set(KEY, cfg); status('code-status', ''); show('now'); }
+  catch { status('code-status', 'That doesn\'t look like a setup code. Copy the whole thing and try again.', true); }
+});
+$('copy-code').addEventListener('click', async e => {
+  const b = e.currentTarget, code = encode(cfg), out = $('code-out');
+  out.value = code; out.hidden = false;
+  try { await navigator.clipboard.writeText(code); b.textContent = 'Copied'; } catch { out.focus(); out.select(); b.textContent = 'Selected below'; }
+  setTimeout(() => b.textContent = 'Copy code', 2500);
+});
+$('share').addEventListener('click', async e => {
+  const url = shareLink(), b = e.currentTarget;
+  if (navigator.share) { try { await navigator.share({ title: 'Which stop?', text: 'My bus setup', url }); return; } catch (err) { if (err && err.name === 'AbortError') return; } }
+  try { await navigator.clipboard.writeText(url); b.textContent = 'Link copied'; } catch { $('code-out').value = url; $('code-out').hidden = false; }
+  setTimeout(() => b.textContent = 'Share my setup', 2500);
+});
+$('redo').addEventListener('click', () => {
+  here = null;
+  const val = p => p.input || [p.line, p.pc].filter(Boolean).join(', ');
+  $('home').value = val(cfg.home); $('dest').value = val(cfg.work); $('dest-name').value = destName();
+  $('arrive').value = cfg.journeys.out.arriveBy;
+  $('want-back').checked = !!cfg.journeys.back; $('leave-field').hidden = !cfg.journeys.back;
+  if (cfg.journeys.back) $('leave').value = cfg.journeys.back.leaveAt;
+  step(1); show('setup');
+});
+
+// ---------- which journey ----------
+// Stop names. Official names are "Area-Stop name" ("Westgate Road-High Street").
+// We show the part people say out loud, big ("High Street"), with the area and road side as detail.
+const tidyName = s => String(s || '').replace(/\s(And|Of|The|On|In|At|By|To|For)(?=\s)/g, m => m.toLowerCase()).replace(/\s+/g, ' ').trim();
+const SIDES = { opp: 'opposite side', adj: 'adjacent', 'o/s': 'outside', nr: 'near', os: 'outside' };
+function sideOf(ind){
+  ind = String(ind || '').trim(); if (!ind) return '';
+  const b = ind.match(/^(?:-?>\s*)?(N|S|E|W|NE|NW|SE|SW)(?:[\s-]*bound)?$/i);
+  if (b) return `${b[1].toUpperCase()}-bound side`;
+  if (SIDES[ind.toLowerCase()]) return SIDES[ind.toLowerCase()];
+  if (/^[A-Z]?\d{0,2}[A-Z]?$/i.test(ind) && ind.length <= 3) return `Stand ${ind.toUpperCase()}`;
+  return ind;
+}
+function stopParts(stop, j){
+  const n = String(stop.name || ''), i = n.lastIndexOf('-');
+  let main = n, area = '';
+  if (i > 0 && i < n.length - 2) {
+    const before = n.slice(0, i).trim(), after = n.slice(i + 1).trim();
+    const lastWord = before.split(/[\s-]/).pop();
+    if ((/\s/.test(before) || /\s/.test(after)) && /^[A-Z0-9]/.test(lastWord) && /^[A-Z0-9]/.test(after)) { main = after; area = before; } // not "Stratford-upon-Avon"
+  }
+  main = tidyName(main); area = tidyName(area);
+  const twin = j && j.stops.some(s => s !== stop && s.name === stop.name);
+  return { main: stop.nick || main, auto: main, area, side: twin ? sideOf(stop.indicator) : '' };
+}
+const stopSub = p => [p.area, p.side].filter(Boolean).join(' · ');
+function stopLabel(stop, j){ const p = stopParts(stop, j); return p.side ? `${p.main} · ${p.side}` : p.main; }
+let manualJourney = null, shownKey = null;
+function currentKey(){
+  if (!cfg.journeys.back) return 'out';
+  if (manualJourney) return manualJourney;
+  const now = londonNow().mins, a = toMins(cfg.journeys.out.arriveBy), l = toMins(cfg.journeys.back.leaveAt);
+  if (l <= a) return 'out';
+  return now < (a + l) / 2 ? 'out' : 'back';
+}
+const J = () => cfg.journeys[currentKey()];
+function renderToggle(){
+  for (const t of [$('toggle'), $('toggle2')]) {
+  t.textContent = '';
+  t.hidden = !cfg.journeys.back;
+  if (!cfg.journeys.back) continue;
+  for (const k of ['out', 'back']) t.append(el('button', { type: 'button', 'aria-pressed': String(currentKey() === k), text: JOURNEYS[k].label(),
+    onclick: () => { manualJourney = k; switchJourney(); } }));
+  }
+}
+function switchJourney(){
+  const k = currentKey();
+  if (k !== shownKey) { shownKey = k; buses = []; lastOk = null; }
+  render(); refresh();
+}
+
+// ---------- settings ----------
+function buildSettings(){
+  const add = (g, label, id, attrs, get, set) => {
+    const inp = el('input', Object.assign({ id }, attrs)); inp.value = get();
+    inp.addEventListener('change', () => { if (set(inp.value) !== false) store.set(KEY, cfg); else inp.value = get(); });
+    g.append(el('label', { for: id, text: label }), inp);
+  };
+  const gt = $('sg-times'), gw = $('sg-walks'); gt.textContent = ''; gw.textContent = '';
+  add(gt, `Arrive at ${destName().toLowerCase()} by`, 'set-arrive', { type: 'time' }, () => cfg.journeys.out.arriveBy, v => { if (!v) return false; cfg.journeys.out.arriveBy = v; });
+  if (cfg.journeys.back) add(gt, `Leave ${destName().toLowerCase()} at`, 'set-leave', { type: 'time' }, () => cfg.journeys.back.leaveAt, v => { if (!v) return false; cfg.journeys.back.leaveAt = v; });
+  add(gt, 'Running takes this share of walking time', 'set-run', { type: 'number', min: '0.3', max: '1', step: '0.05', inputmode: 'decimal' },
+    () => cfg.run, v => { const n = parseFloat(v); if (!(n >= 0.2 && n <= 1)) return false; cfg.run = n; });
+  gw.className = 'stoprows';
+  for (const k of ['out', 'back']) {
+    const j = cfg.journeys[k]; if (!j) continue;
+    j.stops.forEach((s, i) => {
+      const p = stopParts(s, j);
+      const name = el('input', { id: `set-name-${k}-${i}`, type: 'text', maxlength: '30', placeholder: p.auto, 'aria-label': `Name for ${p.auto}` });
+      name.value = s.nick || p.auto;
+      name.addEventListener('change', () => {
+        const v = name.value.trim();
+        if (!v || v === p.auto) { delete s.nick; name.value = p.auto; } else s.nick = v;
+        store.set(KEY, cfg); lastHTML.delete($('hero'));
+      });
+      const walk = el('input', { id: `set-walk-${k}-${i}`, type: 'number', min: '0.5', max: '30', step: '0.5', inputmode: 'decimal', 'aria-label': `Walking minutes to ${p.auto}` });
+      walk.value = s.walk;
+      walk.addEventListener('change', () => { const n = parseFloat(walk.value); if (n > 0) { s.walk = n; store.set(KEY, cfg); } else walk.value = s.walk; });
+      gw.append(el('div', { class: 'stoprow' },
+        el('small', { text: [stopSub(p) || 'Bus stop', k === 'back' ? `from ${destName().toLowerCase()}` : 'from home'].join(' · ') }),
+        name, el('span', { class: 'mins' }, walk, el('span', { text: 'min' }))));
+    });
+  }
+}
+
+// ---------- the answer ----------
+function verdictOf(b){
+  const left = b.expected - londonNow().mins, walk = b.stop.walk, run = walk * cfg.run;
+  if (left >= walk + BUFFER) { const l = left - walk - BUFFER; return { cls: 'go', leave: l, left }; }
+  if (left >= run) return { cls: 'run', left };
+  return { cls: 'miss', left };
+}
+const shortLeave = s => s.cls === 'run' ? 'Run now' : s.cls === 'miss' ? 'Too late' : s.leave < 1 ? 'Walk now' : `Leave in ${Math.floor(s.leave)} min`;
+const dueText = left => left < 0.5 ? 'due' : `in ${Math.round(left)} min`;
+const timing = b => { if (!b.live) return 'timetable'; const l = Math.round(b.delay); return l > 0 ? `${l} min late` : l < 0 ? `${-l} min early` : 'on time'; };
+function ranked(){
+  const rank = { go: 2, run: 1 };
+  return buses.map(b => ({ b, s: verdictOf(b) })).filter(o => o.s.cls !== 'miss')
+    .sort((x, y) => (Math.round(x.b.arrive) - Math.round(y.b.arrive)) || (rank[y.s.cls] - rank[x.s.cls]) || (y.b.expected - x.b.expected));
+}
+// Only tell people to run when it matters: a walkable bus that still gets you there on time (or within 5 min) wins.
+function choose(opts){
+  if (!opts.length || opts[0].s.cls !== 'run') return { pick: opts[0], runAlt: null };
+  const isOut = currentKey() === 'out', top = opts[0];
+  const target = isOut ? toMins(J().arriveBy) : null;
+  const calm = opts.find(o => o.s.cls === 'go' && (isOut ? o.b.arrive <= target || (top.b.arrive > target && o.b.arrive - top.b.arrive <= 5) : o.b.arrive - top.b.arrive <= 5));
+  return calm ? { pick: calm, runAlt: top } : { pick: top, runAlt: null };
+}
+
+function render(){
+  if (view === 'track') { renderTrack(); return; }
+  if (!cfg || view === 'setup' || view === 'plan' || view === 'stats' || !view) return;
+  if (currentKey() !== shownKey) { switchJourney(); return; }
+  renderToggle();
+  if (view === 'now') renderNow();
+  if (view === 'stops') renderStops();
+}
+
+// ---------- walking / running figures ----------
+const reduceMotion = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+function fig(kind, cls, gap){
+  const t = document.createElement('template');
+  t.innerHTML = figureSVG(kind, { size: 64, gap }).trim();
+  const svg = t.content.firstElementChild; svg.classList.add(cls);
+  return svg;
+}
+// Swap in freshly built content only when it actually changed, so the animations
+// don't restart on every 5-second tick.
+const lastHTML = new WeakMap();
+function swap(target, nodes){
+  const tmp = document.createElement('div'); tmp.append(...nodes);
+  if (lastHTML.get(target) === tmp.innerHTML) return;
+  lastHTML.set(target, tmp.innerHTML);
+  target.replaceChildren(...tmp.childNodes);
+  target.querySelectorAll('svg.fig').forEach(s => { if (reduceMotion && s.pauseAnimations) { s.pauseAnimations(); s.setCurrentTime(0); } });
+}
+const moving = s => s.cls === 'run' || (s.cls === 'go' && s.leave < 1);
+
+function renderNow(){
+  const key = currentKey(), j = J(), isOut = key === 'out';
+  const hero = el('div'); const heroEl = $('hero'); heroEl.className = 'hero';
+  const opts = lastOk ? ranked() : [];
+  const { pick, runAlt } = choose(opts);
+  if (!lastOk || !pick) {
+    // Loading: say which stops we're checking, so the wait has context
+    const names = [...new Set(j.stops.map(s => stopParts(s, j).main))];
+    const list = names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}` : names[0];
+    const parts = [
+      el('div', { class: 'hero-row' }, el('span', { class: 'hero-num word', text: lastOk ? 'None' : '…' })),
+      el('div', { class: 'hero-stop', text: lastOk ? 'Nothing catchable' : 'Checking' }),
+      el('p', { class: 'muted', style: 'margin:6px 0 0', text: lastOk ? `No buses ${isOut ? 'to ' + destName().toLowerCase() : 'home'} you can reach in the next hour or so.` : `Getting live times for ${list}.` })];
+    if (lastOk) parts.push(el('div', { class: 'actions', style: 'margin-top:14px' }, el('button', { class: 'btn', type: 'button', text: 'Plan ahead', onclick: () => openPlan('out') })));
+    hero.append(...parts);
+  } else {
+    const { b, s } = pick;
+    heroEl.classList.add(s.cls);
+    let num, unit, word = false;
+    if (s.cls === 'run') { num = 'Run'; word = true; unit = ['now', `bus in ${Math.max(0, Math.round(s.left))} min`]; }
+    else if (s.leave < 1) { num = 'Go'; word = true; unit = ['walk', 'now']; }
+    else { num = String(Math.floor(s.leave)); unit = ['min', 'until you leave']; }
+    hero.append(
+      el('div', { class: 'hero-row' },
+        el('span', { class: 'hero-num' + (word ? ' word' : ''), text: num }),
+        moving(s) ? fig(s.cls === 'run' ? 'run' : 'walk', 'hero-fig') : null,
+        el('div', { class: 'hero-side' }, el('span', { text: unit[0] }), el('span', { class: 'muted', text: unit[1] }))),
+      el('div', { class: 'hero-stop', text: stopParts(b.stop, j).main }));
+    // only the road side when two stops share a name; you know where your stops are
+    if (stopParts(b.stop, j).side) hero.append(el('div', { class: 'muted', style: 'font-size:1.05rem', text: stopParts(b.stop, j).side }));
+    hero.append(busRow(b));
+    if (isOut && b.arrive > toMins(j.arriveBy)) hero.append(el('p', { class: 'warn-line', text: `Arrives about ${hhmm(b.arrive)}, after ${j.arriveBy}` }));
+    hero.append(el('div', { class: 'catch-row' }, el('button', { class: 'btn', type: 'button', onclick: () => trackBus(b, key) },
+      isTracking(b) ? 'Open tracker' : 'Track this bus', T && isTracking(b) && T.remind ? icon('bell') : icon('next'))));
+  }
+  swap(heroEl, [...hero.childNodes]);
+  heroTrip = pick ? pick.b.tripId : null;
+  renderPrompt();
+
+  // other buses: catchable first by departure, best one inverted
+  const rest = opts.filter(o => o !== pick).sort((x, y) => x.b.expected - y.b.expected).slice(0, 6);
+  $('list-h').hidden = !rest.length;
+  swap($('list'), rest.map(({ b, s }) => card(b, s, j, isOut, false)));
+  stamp();
+}
+// The chosen bus: big solid badge, time, and where it is as a strip of stops
+function busRow(b){
+  return el('div', { class: 'busrow' }, el('span', { class: 'badge xl', text: b.line }),
+    el('div', { class: 'busrow-main' },
+      el('div', { class: 'busrow-time' }, hhmm(b.expected), el('small', {}, b.live ? el('span', { class: 'live' }) : null, timing(b))),
+      b.stopsAway ? el('div', { class: 'busrow-where' }, stopStrip(b.stopsAway, b.estimated), el('span', { text: awayText(b.stopsAway, b.estimated) }))
+        : el('div', { class: 'busrow-where muted', text: b.live ? 'Tracked live' : b.pIdx < 0 ? 'Not set off yet · timetable' : 'Not tracked yet' })));
+}
+function card(b, s, j, isOut, best){
+  const tracking = isTracking(b);
+  return el('li', { class: 'card tap' + (best ? ' best' : '') + (s.cls === 'miss' ? ' missed' : '') + (tracking ? ' tracking' : ''), role: 'button', tabindex: '0', 'aria-label': `Track the ${b.line} at ${hhmm(b.expected)}`,
+      onclick: () => trackBus(b, currentKey()), onkeydown: e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); trackBus(b, currentKey()); } } },
+    el('span', { class: 'eyebrow' + (s.cls === 'run' ? ' run' : '') }, moving(s) ? fig(s.cls === 'run' ? 'run' : 'walk', 'mini', 'var(--card)') : null, shortLeave(s) + (tracking ? ' · tracking' : '')),
+    el('span', { class: 'name' }, el('span', { class: 'badge', text: b.line }), el('span', { text: stopParts(b.stop, j).main })),
+    el('span', { class: 'sub', text: [stopParts(b.stop, j).side, b.stopsAway ? awayText(b.stopsAway, b.estimated).replace(' (timetable)', '') : null, `${fmtMin(b.stop.walk)} walk`].filter(Boolean).join(' · ') }),
+    el('span', { class: 'time' }, hhmm(b.expected), el('small', {}, b.live ? el('span', { class: 'live' }) : null, b.live ? timing(b) : 'timetable')));
+}
+
+function renderStops(){
+  const key = currentKey(), j = J(), isOut = key === 'out';
+  $('stops-title').textContent = isOut ? `To ${destName().toLowerCase()}` : 'Home';
+  const boards = [];
+  for (const stop of j.stops) {
+    const lines = [...new Set(stop.services.map(s => s.line))];
+    const ul = el('ul', { class: 'rows' });
+    const list = buses.filter(b => b.stop === stop).slice(0, 5);
+    if (!list.length) ul.append(el('li', { class: 'empty', text: lastOk ? 'Nothing in the next hour or so.' : 'Loading…' }));
+    for (const b of list) {
+      const s = verdictOf(b);
+      ul.append(el('li', { class: 'tap', role: 'button', tabindex: '0', onclick: () => trackBus(b, currentKey()) },
+        el('span', { class: 'badge', text: b.line }),
+        el('div', {}, el('div', { class: 't', text: hhmm(b.expected) }), el('div', { class: 'd' }, b.live ? el('span', { class: 'live' }) : null, `${timing(b)} · ${isOut ? 'arrive' : 'home'} ${hhmm(b.arrive)}`)),
+        el('span', { class: 's ' + s.cls }, moving(s) ? fig(s.cls === 'run' ? 'run' : 'walk', 'mini', 'var(--card)') : null, shortLeave(s))));
+    }
+    boards.push(el('section', { class: 'board' },
+      el('div', { class: 'bh' },
+        el('div', {}, el('h2', { text: stopParts(stop, j).main }), el('div', { class: 'muted', style: 'font-size:.85rem;margin-top:4px', text: [stopSub(stopParts(stop, j)), lines.join(' · ')].filter(Boolean).join(' · ') })),
+        el('div', { class: 'walk' }, 'Walk ', el('b', { text: fmtMin(stop.walk) }), el('br'), 'Run ', el('b', { text: fmtMin(halfMin(stop.walk * cfg.run)) }))),
+      ul));
+  }
+  swap($('boards'), boards);
+}
+function stamp(){
+  const s = $('stamp'); s.textContent = '';
+  if (busy) s.append('Updating…');
+  else s.append(lastOk ? `Updated ${lastOk.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })} · ` : '', el('b', { text: 'Refresh' }));
+}
+$('stamp').addEventListener('click', () => refresh());
+
+async function refresh(){
+  if (!cfg || busy || view === 'setup' || view === 'plan' || view === 'stats' || view === 'track' || document.hidden) return;
+  busy = true; if (view === 'now') stamp();
+  const err = $('error');
+  try { await load(); err.hidden = true; if (typeof widgetLive === 'function') widgetLive(); }
+  catch (e) { err.hidden = false; err.textContent = `Couldn't reach live bus data. ${lastOk ? 'Showing the last update.' : 'Check your connection and tap Refresh.'}`; }
+  busy = false; render();
+}
+setInterval(refresh, 30000);
+setInterval(render, 5000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) { manualJourney = null; refresh(); render(); if (T) loadTrack(); } });
+
+// ---------- plan ahead (timetable look-ahead) ----------
+// Pick a day, a journey, and "arrive by" or "leave at". The answer is the time to leave your door.
+const plan = { key: null, day: 0, mode: null, time: null, seq: 0 };
+const dayFmt = new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', weekday: 'short', day: 'numeric' });
+const longDayFmt = new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long' });
+const dayLabel = n => n === 0 ? 'Today' : n === 1 ? 'Tomorrow' : dayFmt.format(new Date(addDays(londonNow().date, n) + 'T12:00:00Z'));
+const longDay = n => n === 0 ? 'today' : n === 1 ? 'tomorrow' : longDayFmt.format(new Date(addDays(londonNow().date, n) + 'T12:00:00Z'));
+
+function planDefaults(key, day){
+  plan.key = key || currentKey();
+  const j = cfg.journeys[plan.key];
+  plan.mode = plan.key === 'out' ? 'arrive' : 'leave';
+  plan.time = plan.key === 'out' ? j.arriveBy : j.leaveAt;
+  // next time this journey happens: today if it's still ahead, otherwise tomorrow
+  plan.day = day != null ? day : (londonNow().mins > toMins(plan.time) - (plan.mode === 'arrive' ? 30 : 0) ? 1 : 0);
+}
+function openPlan(key, day){ planDefaults(key, day); show('plan'); }
+
+function planControls(){
+  const tg = $('plan-toggle'); tg.textContent = ''; tg.hidden = !cfg.journeys.back;
+  if (cfg.journeys.back) for (const k of ['out', 'back']) tg.append(el('button', { type: 'button', 'aria-pressed': String(plan.key === k), text: JOURNEYS[k].label(),
+    onclick: () => { const d = plan.day; planDefaults(k, d); planControls(); runPlan(); } }));
+  const days = $('plan-days'); days.textContent = '';
+  for (let n = 0; n < 2; n++) days.append(el('button', { type: 'button', 'aria-pressed': String(plan.day === n), text: dayLabel(n),
+    onclick: () => { plan.day = n; planControls(); runPlan(); } }));
+  const md = $('plan-mode'); md.textContent = '';
+  for (const [m, t] of [['arrive', 'Arrive by'], ['leave', 'Leave at']]) md.append(el('button', { type: 'button', 'aria-pressed': String(plan.mode === m), text: t,
+    onclick: () => { plan.mode = m; planControls(); runPlan(); } }));
+  $('plan-time').value = plan.time;
+}
+$('plan-time').addEventListener('change', e => { if (e.target.value) { plan.time = e.target.value; runPlan(); } });
+
+// Timetabled journeys for one day, built the same way as the live view but without vehicles.
+async function planTrips(key, date, lo, hi){
+  const j = cfg.journeys[key], dest = JOURNEYS[key].to(), D = [dest.lon, dest.lat];
+  const jobs = [];
+  for (const stop of j.stops) for (const svc of stop.services) {
+    const trips = await tripList(svc.id, date);
+    const heads = new Map(svc.heads.map(h => [h.h, h.off]));
+    for (const [id, start, h] of trips) {
+      if (!heads.has(h)) continue;
+      const b = startMins(start) + heads.get(h);
+      if (b >= lo - 15 && b <= hi + 15) jobs.push({ id, stop, svc });
+    }
+  }
+  const details = await pool(jobs, 4, x => tripDetail(x.id));
+  const out = [], seen = new Set();
+  jobs.forEach((x, n) => {
+    const d = details[n];
+    if (!d || !d.times) return;
+    const idx = d.times.findIndex(t => t.stop.atco_code === x.stop.atco && t.pick_up !== false);
+    if (idx < 0) return;
+    const aimedStr = d.times[idx].aimed_departure_time || d.times[idx].aimed_arrival_time;
+    if (!aimedStr) return;
+    const aimed = toMins(aimedStr);
+    if (aimed < lo || aimed > hi) return;
+    let arrive = null, off = '';
+    for (let k = idx + 1; k < d.times.length; k++) {
+      const t = d.times[k], ts = t.aimed_arrival_time || t.aimed_departure_time;
+      if (t.set_down === false || !ts) continue;
+      const a = j.alight[t.stop.atco_code];
+      let w = null, name = '';
+      if (a) { w = a[1]; name = a[0]; }
+      else if (t.stop.location) { const m = dist(t.stop.location, D); if (m <= NEAR_DEST) { w = estWalk(m); name = stripDistrict(t.stop.name, dest.district); } }
+      if (w === null) continue;
+      let tt = toMins(ts); if (tt < aimed - 60) tt += 1440;
+      if (arrive === null || tt + w < arrive) { arrive = tt + w; off = name; }
+    }
+    if (arrive === null) return;
+    const k = `${x.stop.atco}|${x.svc.line}|${aimed}`;
+    if (seen.has(k)) return; seen.add(k);
+    out.push({ stop: x.stop, line: x.svc.line, aimed, arrive, off, leave: aimed - x.stop.walk - BUFFER, tripId: d.id, svcId: x.svc.id, times: d.times });
+  });
+  return out;
+}
+
+async function runPlan(){
+  const seq = ++plan.seq, key = plan.key, j = cfg.journeys[key], isOut = key === 'out';
+  const t = toMins(plan.time), date = addDays(londonNow().date, plan.day);
+  const target = plan.mode === 'arrive';
+  const lo = target ? t - 150 : t - 5, hi = target ? t + 20 : t + 150;
+  $('plan-sum').textContent = '';
+  swap($('plan-hero'), [el('div', { class: 'hero-row' }, el('span', { class: 'hero-num word', text: '…' })), el('p', { class: 'muted', text: `Checking ${longDay(plan.day)}'s timetables…` })]);
+  swap($('plan-list'), []); $('plan-list-h').hidden = true;
+  let rows;
+  try { rows = await planTrips(key, date, lo, hi); }
+  catch { if (seq === plan.seq) swap($('plan-hero'), [el('p', { class: 'notice', text: 'Couldn\'t reach the timetables. Check your connection and try again.' })]); return; }
+  if (seq !== plan.seq) return; // settings changed while loading
+
+  let best, list;
+  if (target) {
+    const ok = rows.filter(r => r.arrive <= t);
+    // latest you can leave and still be there on time; on ties, the earlier arrival
+    best = ok.sort((a, b) => (b.leave - a.leave) || (a.arrive - b.arrive))[0];
+    list = rows.filter(r => r.arrive <= t + 15).sort((a, b) => a.aimed - b.aimed).slice(-8);
+  } else {
+    const ok = rows.filter(r => r.leave >= t);
+    best = ok.sort((a, b) => (a.arrive - b.arrive) || (a.leave - b.leave))[0];
+    list = ok.sort((a, b) => a.aimed - b.aimed).slice(0, 8);
+  }
+
+  const where = isOut ? destName().toLowerCase() : 'home';
+  $('plan-sum').textContent = `${longDay(plan.day).replace(/^./, c => c.toUpperCase())} · ${target ? 'arrive' : 'leave'} ${target ? 'by' : 'at'} ${plan.time}`;
+  if (!best) {
+    swap($('plan-hero'), [el('div', { class: 'hero-row' }, el('span', { class: 'hero-num word', text: 'None' })),
+      el('p', { class: 'muted', style: 'margin:6px 0 0', text: target ? `No bus gets you ${isOut ? 'to ' + where : where} by ${plan.time} ${longDay(plan.day)}. Try a later time.` : `No buses ${isOut ? 'to ' + where : where} within a couple of hours of ${plan.time} ${longDay(plan.day)}.` })]);
+  } else {
+    const sp = stopParts(best.stop, j), parts = [sp.main, stopSub(sp)];
+    swap($('plan-hero'), [
+      el('div', { class: 'hero-row' },
+        el('span', { class: 'hero-num clock', text: hhmm(best.leave) }),
+        el('div', { class: 'hero-side' }, el('span', { text: 'leave' }), el('span', { class: 'muted', text: isOut ? 'home' : destName().toLowerCase() }))),
+      el('div', { class: 'hero-stop', text: parts[0] }),
+      parts[1] ? el('div', { class: 'muted', style: 'font-size:1.05rem', text: parts[1] }) : null,
+      el('dl', { class: 'hero-meta' },
+        el('dt', { text: 'Bus' }), el('dd', { text: `${best.line} at ${hhmm(best.aimed)}` }),
+        el('dt', { text: isOut ? 'Arrive' : 'Home' }), el('dd', { text: `${hhmm(best.arrive)}${target ? ` · ${Math.round(t - best.arrive)} min to spare` : ''}` }),
+        el('dt', { text: 'Off at' }), el('dd', { text: best.off }),
+        el('dt', { text: 'Walk' }), el('dd', { text: `${fmtMin(best.stop.walk)} to the stop` })),
+      el('div', { class: 'catch-row' }, el('button', { class: 'btn', type: 'button', onclick: () => trackBus(best, key, date) }, icon('bell'), 'Track and remind me'))
+    ].filter(Boolean));
+  }
+  $('plan-list-h').hidden = !list.length;
+  swap($('plan-list'), list.map(r => {
+    const late = target && r.arrive > t;
+    return el('li', { class: 'card tap' + (r === best ? ' best' : '') + (late ? ' missed' : ''), role: 'button', tabindex: '0', 'aria-label': `Track the ${r.line} at ${hhmm(r.aimed)}`,
+      onclick: () => trackBus(r, key, date) },
+      el('span', { class: 'eyebrow', text: `Leave ${isOut ? 'home' : destName().toLowerCase()} ${hhmm(r.leave)}` }),
+      el('span', { class: 'name' }, el('span', { class: 'badge', text: r.line }), el('span', { text: stopParts(r.stop, j).main })),
+      el('span', { class: 'sub', text: [stopParts(r.stop, j).side, `${isOut ? 'Arrive' : 'Home'} ${hhmm(r.arrive)}${late ? ` · after ${plan.time}` : ''}`].filter(Boolean).join(' · ') }),
+      el('span', { class: 'time' }, hhmm(r.aimed), el('small', { text: 'departs' })));
+  }));
+}
+
+// ---------- ride log ----------
+// Rides are kept on this phone only. A ride is logged from the Now screen ("Caught it"), or from the
+// "Did you catch…?" prompt that appears for 20 minutes after a recommended bus has left.
+const RIDES = 'bw2-rides', RECENT = 'bw2-recent';
+// localStorage can drop its last few writes if the app is closed straight away, so rides and the
+// recent-bus memory are mirrored to IndexedDB (which confirms each write) and restored from it on start.
+const durable = (() => {
+  let dbp = null;
+  const open = () => dbp || (dbp = new Promise((res, rej) => { try { const q = indexedDB.open('which-stop', 1); q.onupgradeneeded = () => q.result.createObjectStore('kv'); q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); } catch (e) { rej(e); } }));
+  return {
+    put: (k, v) => open().then(db => new Promise(res => { const tx = db.transaction('kv', 'readwrite'); tx.objectStore('kv').put(v, k); tx.oncomplete = res; tx.onerror = res; tx.onabort = res; })).catch(() => {}),
+    get: k => open().then(db => new Promise(res => { const g = db.transaction('kv').objectStore('kv').get(k); g.onsuccess = () => res(g.result); g.onerror = () => res(undefined); })).catch(() => undefined)
+  };
+})();
+function keep(lsKey, idbKey, list){ const at = Date.now(); store.set(lsKey, list); store.set(lsKey + '-at', at); durable.put(idbKey, { at, list }); }
+const rides = { all: () => store.get(RIDES, []), save: list => keep(RIDES, 'rides', list) };
+(async () => {
+  let changed = false;
+  for (const [k, name] of [[RIDES, 'rides'], [RECENT, 'recent']]) {
+    const d = await durable.get(name);
+    if (d && Array.isArray(d.list) && d.at > store.get(k + '-at', 0)) { store.set(k, d.list); store.set(k + '-at', d.at); changed = true; }
+  }
+  if (changed) refreshAll();
+  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch {}
+})();
+const rideKey = (date, atco, line, aimed) => `${date}|${atco}|${line}|${Math.round(aimed)}`;
+const isLogged = key => rides.all().some(r => r.key === key);
+
+// Remember what we recommended, so it can still be logged once you're on board.
+function rememberPick(b, s, key){
+  const now = londonNow(), j = cfg.journeys[key];
+  const k = rideKey(now.date, b.stop.atco, b.line, b.aimed);
+  let list = store.get(RECENT, []).filter(x => x.date === now.date && now.mins - x.expected < 40);
+  let x = list.find(r => r.key === k);
+  if (!x) { x = { key: k, date: now.date, dir: key, line: b.line, atco: b.stop.atco, aimed: b.aimed, target: key === 'out' ? toMins(j.arriveBy) : null }; list.push(x); }
+  Object.assign(x, { stop: stopParts(b.stop, j).main, expected: b.expected, arrive: b.arrive, live: b.live, delay: Math.round(b.delay || 0), ran: x.ran || s.cls === 'run' });
+  keep(RECENT, 'recent', list.slice(-8));
+  return x;
+}
+function snapshot(b, s, key){ return rememberPick(b, s, key); }
+
+function logRide(x){
+  if (isLogged(x.key)) return null;
+  const list = rides.all();
+  const r = { key: x.key, ts: Date.now(), date: x.date, dir: x.dir, line: x.line, atco: x.atco, stop: x.stop,
+    aimed: x.aimed, expected: x.expected, arrive: x.arrive, live: !!x.live, delay: x.delay || 0, ran: !!x.ran, target: x.target };
+  list.push(r); rides.save(list);
+  return r;
+}
+function undoRide(key){ rides.save(rides.all().filter(r => r.key !== key)); refreshAll(); }
+function refreshAll(){ lastHTML.delete($('hero')); lastHTML.delete($('caught')); lastHTML.delete($('list')); if (view === 'now') renderNow(); if (view === 'stats') renderStats(); }
+
+function checkIcon(){
+  const t = document.createElement('template');
+  t.innerHTML = '<svg class="tick" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+  return t.content.firstElementChild;
+}
+// ---------- celebration ----------
+let celebrateTimer = null;
+function caught(x){
+  const r = logRide(x); if (!r) { refreshAll(); return; }
+  const all = rides.all(), n = all.length, sameLine = all.filter(y => y.line === r.line).length;
+  const ord = k => k + (['th', 'st', 'nd', 'rd'][(k % 100 - 20) % 10] || ['th', 'st', 'nd', 'rd'][k % 100] || 'th');
+  const lines = [];
+  if (r.ran) lines.push('You ran for it, and made it.');
+  if (r.dir === 'out' && r.target != null) lines.push(r.arrive <= r.target ? `On track for ${hhmm(r.arrive)}, ${Math.round(r.target - r.arrive)} min to spare.` : `Arriving about ${hhmm(r.arrive)}.`);
+  else lines.push(`Home about ${hhmm(r.arrive)}.`);
+  const ov = $('celebrate');
+  ov.replaceChildren(
+    el('div', { class: 'cel-art' }, svgNode(confettiSVG()), svgNode(busTickSVG({ size: 150 }))),
+    el('div', { class: 'cel-title', text: 'Caught it!' }),
+    el('p', { class: 'cel-sub', text: `Ride ${n} · your ${ord(sameLine)} on the ${r.line}` }),
+    el('p', { class: 'muted cel-line', text: lines.join(' ') }),
+    el('div', { class: 'actions', style: 'justify-content:center' },
+      el('button', { class: 'btn', type: 'button', text: 'Nice', onclick: closeCelebrate }),
+      el('button', { class: 'btn ghost', type: 'button', text: 'Undo', onclick: () => { closeCelebrate(); undoRide(r.key); } })));
+  ov.hidden = false;
+  if (reduceMotion) ov.querySelectorAll('svg').forEach(s => { if (s.pauseAnimations) { s.pauseAnimations(); s.setCurrentTime(5); } });  // final frame: bus with its tick
+  if (navigator.vibrate) try { navigator.vibrate([18, 40, 18]); } catch {}
+  clearTimeout(celebrateTimer); celebrateTimer = setTimeout(closeCelebrate, 4500);
+  refreshAll();
+}
+function closeCelebrate(){ clearTimeout(celebrateTimer); const ov = $('celebrate'); ov.hidden = true; ov.replaceChildren(); }
+$('celebrate').addEventListener('click', e => { if (e.target === e.currentTarget) closeCelebrate(); });
+function svgNode(markup){ const t = document.createElement('template'); t.innerHTML = markup.trim(); return t.content.firstElementChild; }
+
+// ---------- stats ----------
+const WD = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const wdOf = date => (new Date(date + 'T12:00:00Z').getUTCDay() + 6) % 7;
+const shortDate = new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', weekday: 'short', day: 'numeric', month: 'short' });
+const fmtDate = d => shortDate.format(new Date(d + 'T12:00:00Z'));
+let clearArmed = false;
+
+function bars(rows, total){ // [{label, badge?, n}]
+  return el('ul', { class: 'bars' + (rows.some(r => r.label) ? ' stacked' : '') }, ...rows.map(r => el('li', {},
+    r.badge ? el('span', { class: 'badge', text: r.badge }) : el('span', { class: 'bl', text: r.label }),
+    el('span', { class: 'track' }, el('span', { class: 'fill', style: `width:${Math.max(4, Math.round(100 * r.n / total))}%` })),
+    el('span', { class: 'bn', text: String(r.n) }))));
+}
+function renderStats(){
+  const list = rides.all().slice().sort((a, b) => a.ts - b.ts);
+  const root = $('stats-body'), n = list.length;
+  if (!n) {
+    swap(root, [el('section', { class: 'hero' },
+      el('div', { class: 'stats-empty' }, svgNode(busTickSVG({ size: 110, still: true }))),
+      el('div', { class: 'hero-stop', text: 'No rides yet' }),
+      el('p', { class: 'muted', text: 'When you get on a bus, tap "Caught it" while tracking it. Your rides, favourite buses and stops will build up here.' }))]);
+    
+    return;
+  }
+  const today = londonNow().date, wk0 = addDays(today, -wdOf(today));
+  const thisWeek = list.filter(r => r.date >= wk0);
+  const out = list.filter(r => r.dir === 'out'), back = list.filter(r => r.dir === 'back');
+  const count = (arr, f) => { const m = new Map(); for (const r of arr) m.set(f(r), (m.get(f(r)) || 0) + 1); return [...m].sort((a, b) => b[1] - a[1]); };
+  const lines = count(list, r => r.line).slice(0, 5), stops = count(list, r => r.stop).slice(0, 4);
+  const ran = list.filter(r => r.ran).length;
+  const timed = out.filter(r => r.target != null), onTime = timed.filter(r => r.arrive <= r.target).length;
+  const days = count(list, r => wdOf(r.date));
+  const tied = days.length > 1 && days[1][1] === days[0][1];
+  const favDay = !days.length ? '–' : tied ? 'Even' : WD[days[0][0]];
+  const perDay = WD.map((d, i) => thisWeek.filter(r => wdOf(r.date) === i).length), maxDay = Math.max(1, ...perDay);
+
+  const tile = (big, label, sub) => el('div', { class: 'tile' }, el('span', { class: 'tb', text: big }), el('span', { class: 'tl', text: label }), sub ? el('span', { class: 'ts', text: sub }) : null);
+  const recent = list.slice(-8).reverse();
+  swap(root, [
+    el('section', { class: 'hero' },
+      el('div', { class: 'hero-row' }, el('span', { class: 'hero-num', text: String(n) }),
+        el('div', { class: 'hero-side' }, el('span', { text: n === 1 ? 'ride' : 'rides' }), el('span', { class: 'muted', text: `since ${fmtDate(list[0].date)}` })))),
+    el('div', { class: 'panel' },
+      el('h3', { text: 'To and from' }),
+      el('div', { class: 'split' },
+        el('span', { class: 'sa', style: `flex:${out.length || 0.0001}` }), el('span', { class: 'sb', style: `flex:${back.length || 0.0001}` })),
+      el('div', { class: 'split-l' },
+        el('span', {}, el('b', { text: String(out.length) }), ` to ${destName().toLowerCase()}`),
+        el('span', {}, el('b', { text: String(back.length) }), ' home'))),
+    el('div', { class: 'tiles' },
+      tile(String(thisWeek.length), 'this week'),
+      tile(timed.length ? `${Math.round(100 * onTime / timed.length)}%` : '–', `on time to ${destName().toLowerCase()}`, timed.length ? `${onTime} of ${timed.length}` : 'no rides yet'),
+      tile(String(ran), 'ran for it', ran ? 'and made it' : 'all calm so far'),
+      tile(favDay, 'busiest day', tied ? 'no clear favourite yet' : `${days[0][1]} rides`)),
+    el('div', { class: 'panel' }, el('h3', { text: 'This week' }),
+      el('div', { class: 'week' }, ...WD.map((d, i) => el('div', { class: 'wd' + (i === wdOf(today) ? ' today' : '') },
+        el('span', { class: 'wb' }, el('span', { class: 'wf', style: `height:${perDay[i] ? Math.max(12, Math.round(100 * perDay[i] / maxDay)) : 0}%` })),
+        el('span', { class: 'wn', text: perDay[i] ? String(perDay[i]) : '' }), el('span', { class: 'wl', text: d[0] }))))),
+    el('div', { class: 'panel' }, el('h3', { text: 'Most caught' }), bars(lines.map(([l, k]) => ({ badge: l, n: k })), lines[0][1])),
+    el('div', { class: 'panel' }, el('h3', { text: 'Your stops' }), bars(stops.map(([l, k]) => ({ label: l, n: k })), stops[0][1])),
+    el('div', { class: 'section-h' }, el('span', { text: 'Recent rides' })),
+    el('ul', { class: 'list' }, ...recent.map(r => el('li', { class: 'card ride' },
+      el('span', { class: 'eyebrow', text: `${fmtDate(r.date)} · ${r.dir === 'out' ? 'to ' + destName().toLowerCase() : 'home'}${r.ran ? ' · ran' : ''}` }),
+      el('span', { class: 'name' }, el('span', { class: 'badge', text: r.line }), el('span', { text: r.stop })),
+      el('span', { class: 'time' }, hhmm(r.expected), el('button', { class: 'linkbtn', type: 'button', text: 'Remove', 'aria-label': `Remove the ${r.line} on ${fmtDate(r.date)}`, onclick: () => undoRide(r.key) }))))),
+    el('div', { class: 'actions', style: 'margin-top:6px' }, el('button', { class: 'btn ghost', type: 'button', id: 'clear-rides', text: clearArmed ? 'Tap again to delete all rides' : 'Clear all rides',
+      onclick: () => { if (!clearArmed) { clearArmed = true; lastHTML.delete($('stats-body')); renderStats(); setTimeout(() => { clearArmed = false; if (view === 'stats') { lastHTML.delete($('stats-body')); renderStats(); } }, 4000); } else { clearArmed = false; rides.save([]); refreshAll(); } } })),
+    el('p', { class: 'note', text: 'Your rides are stored on this phone only.' })
+  ]);
+}
+
+// =====================================================================
+// Tracking a chosen bus: pick any bus (Now, Stops, Plan ahead) to follow it on
+// its own page, see how many stops away it is, set a leave reminder, and log
+// "Caught it" when you're on board.
+// =====================================================================
+const TRACK = 'bw2-track';
+let T = store.get(TRACK, null), heroTrip = null;
+let tk = { d: null, v: null, ok: null, busy: false, err: false, from: 'now' };
+const saveT = () => store.set(TRACK, T);
+const ICON = {
+  bus: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="14" rx="3" fill="currentColor"/><rect x="7.5" y="5.5" width="9" height="5" rx="1" fill="var(--inv-bg)"/><circle cx="8.5" cy="14" r="1.2" fill="var(--inv-bg)"/><circle cx="15.5" cy="14" r="1.2" fill="var(--inv-bg)"/><rect x="6" y="17" width="3" height="3" rx="1" fill="currentColor"/><rect x="15" y="17" width="3" height="3" rx="1" fill="currentColor"/></svg>',
+  back: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5L8 12l6.5 6.5"/></svg>',
+  next: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5L16 12l-6.5 6.5"/></svg>',
+  bell: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 1.5h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></svg>',
+  cal: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5.5" width="16" height="14.5" rx="3"/><path d="M4 10h16M8.5 3.5v4M15.5 3.5v4"/></svg>'
+};
+const icon = k => svgNode(ICON[k]);
+const daysBetween = (a, b) => Math.round((Date.parse(b + 'T12:00:00Z') - Date.parse(a + 'T12:00:00Z')) / 864e5);
+const stopShort = n => stopParts({ name: cleanName(n) }, null).main;
+
+// ---- start tracking ----
+function trackBus(b, key, date){
+  const j = cfg.journeys[key], p = stopParts(b.stop, j);
+  T = { date: date || londonNow().date, dir: key, tripId: b.tripId, svcId: b.svcId, line: b.line, atco: b.stop.atco, stop: p.main, side: p.side,
+        walk: b.stop.walk, aimed: b.aimed, arrive: b.arrive, target: key === 'out' ? toMins(j.arriveBy) : null, remind: false, notified: false, ran: false };
+  saveT();
+  tk = { d: b.times ? { id: b.tripId, times: b.times } : null, v: null, ok: null, busy: false, err: false, from: view === 'track' ? tk.from : view };
+  show('track');
+}
+function stopTracking(){ T = null; saveT(); clearTimeout(remindTimer); nativeCancel(); lastHTML.delete($('caught')); show(tk.from && tk.from !== 'track' ? tk.from : 'now'); }
+const isTracking = b => T && T.tripId === b.tripId && T.atco === b.stop.atco;
+
+// ---- where is it? ----
+function trackState(){
+  if (!T) return null;
+  const now = londonNow(), dayOff = daysBetween(now.date, T.date);
+  const times = tk.d && tk.d.times;
+  const idx = times ? times.findIndex(x => x.stop.atco_code === T.atco && x.pick_up !== false) : -1;
+  // use the freshest live data: the tracker's own fetch, or the Now screen's (which refreshes every 30s)
+  let v = dayOff === 0 ? tk.v : null;
+  const nb = dayOff === 0 && typeof buses !== 'undefined' ? buses.find(x => x.tripId === T.tripId && x.stop.atco === T.atco) : null;
+  if (nb && nb.live && (!v || (lastOk && tk.ok && lastOk > tk.ok))) v = { delay: nb.delay * 60, progress: { prev_stop: nb.pIdx >= 0 && nb.times[nb.pIdx] ? nb.times[nb.pIdx].stop.atco_code : null } };
+  if (!tk.d && nb && nb.times) tk.d = { id: T.tripId, times: nb.times };
+  const live = !!v;
+  const delay = live ? (v.delay || 0) / 60 : 0;
+  const expected = T.aimed + delay;
+  let pIdx = -1, est = false;
+  if (dayOff === 0 && times) {
+    const prev = live && v.progress && v.progress.prev_stop;
+    pIdx = prev ? times.findIndex(x => x.stop.atco_code === prev) : -1;
+    if (!prev) { pIdx = timetablePos(times, times.length - 1, now.mins, delay); est = true; }
+  }
+  const left = expected - now.mins + 1440 * dayOff;                  // minutes until the bus reaches your stop
+  const leaveIn = left - T.walk - BUFFER;
+  const passed = idx >= 0 && pIdx >= idx && (live || left < -1);
+  const departed = dayOff < 0 || (dayOff === 0 && (left < -1.5 || (live && passed)));
+  const cls = departed ? 'gone' : left >= T.walk + BUFFER ? 'go' : left >= T.walk * cfg.run ? 'run' : 'late';
+  const stopsAway = idx >= 0 && pIdx >= 0 && pIdx < idx ? idx - pIdx : null;
+  return { now, dayOff, times, idx, pIdx, est, live, delay, expected, left, leaveIn, departed, cls, stopsAway, leave: expected - T.walk - BUFFER };
+}
+async function loadTrack(){
+  if (!T || tk.busy) return;
+  tk.busy = true;
+  try {
+    if (!tk.d || tk.d.id !== T.tripId || !tk.d.times) tk.d = await tripDetail(T.tripId);
+    if (T.date === londonNow().date) {
+      const vs = await getJSON(`${API}/vehicles.json?service=${T.svcId}`);
+      let v = (vs || []).find(x => x.trip_id === T.tripId) || null;
+      if (v && Math.abs((v.delay || 0) / 60) > 40) v = null;
+      tk.v = v;
+    }
+    tk.ok = new Date(); tk.err = false;
+  } catch { tk.err = true; }
+  tk.busy = false;
+  const st = trackState();
+  if (st && st.dayOff === 0 && st.left < -60) { T = null; saveT(); }      // long gone: stop tracking
+  if (view === 'track') renderTrack(); if (view === 'now') renderPrompt();
+  scheduleReminder();
+  if (typeof widgetTracked === 'function') widgetTracked();
+}
+setInterval(() => { if (T && !document.hidden && (view === 'track' || view === 'now')) loadTrack(); }, 20000);
+
+// ---- the clever "3 stops away" strip ----
+function stopStrip(n, est){
+  const shown = Math.min(n, 5), s = el('span', { class: 'strip' + (est ? ' est' : ''), 'aria-hidden': 'true' });
+  s.append(el('span', { class: 'sbus' }, icon('bus')));
+  if (n > 5) s.append(el('span', { class: 'seg' }), el('span', { class: 'more', text: '…' }));
+  for (let i = 0; i < shown; i++) s.append(el('span', { class: 'seg' }), el('span', { class: 'sdot' + (i === shown - 1 ? ' you' : '') }));
+  return s;
+}
+const awayText = (n, est) => `${est ? 'about ' : ''}${n} stop${n > 1 ? 's' : ''} away${est ? ' (timetable)' : ''}`;
+
+// ---- the route line ----
+function routeView(st){
+  if (!st.times || st.idx < 0) return el('p', { class: 'muted', text: tk.err ? 'Couldn\'t load the route. Tap Refresh.' : 'Loading the route…' });
+  const times = st.times, idx = st.idx, j = cfg.journeys[T.dir];
+  let off = -1;
+  for (let k = idx + 1; k < times.length; k++) if (j && j.alight && j.alight[times[k].stop.atco_code]) { off = k; break; }
+  const from = Math.max(0, idx - 6), showBus = st.dayOff === 0 && !st.departed || (st.dayOff === 0 && st.pIdx >= idx);
+  const t = k => { const ts = times[k].aimed_departure_time || times[k].aimed_arrival_time; return ts ? hhmm(toMins(ts) + st.delay) : ''; };
+  const rows = [];
+  const busRow = (label) => el('li', { class: 'rs bus' + (st.est ? ' est' : '') },
+    el('span', { class: 'rt' }), el('span', { class: 'rr' }, el('span', { class: 'busmark' }, icon('bus'))),
+    el('span', { class: 'rl' }, el('b', { text: label }), el('small', { text: st.est ? 'estimated from the timetable' : 'live position' })));
+  if (showBus && st.pIdx < 0) rows.push(busRow('Not set off yet'));
+  else if (showBus && st.pIdx < from) rows.push(busRow(`${from - st.pIdx} more stop${from - st.pIdx > 1 ? 's' : ''} back`));
+  for (let k = from; k <= idx; k++) {
+    const you = k === idx, passed = st.dayOff === 0 && k <= st.pIdx;
+    rows.push(el('li', { class: 'rs' + (you ? ' you' : '') + (passed ? ' passed' : '') },
+      el('span', { class: 'rt', text: t(k) }), el('span', { class: 'rr' }, el('span', { class: 'rd' })),
+      el('span', { class: 'rl' }, you ? el('b', { text: T.stop }) : stopShort(times[k].stop.name), you ? el('small', { text: 'Your stop' }) : null)));
+    if (showBus && k === st.pIdx && k < idx) rows.push(busRow(st.stopsAway === 1 ? 'Next stop is yours' : `${st.stopsAway} stops away`));
+  }
+  if (showBus && st.pIdx >= idx) rows.push(busRow('Left your stop'));
+  if (off > idx) {
+    if (off - idx > 1) rows.push(el('li', { class: 'rs gap' }, el('span', { class: 'rt' }), el('span', { class: 'rr' }), el('span', { class: 'rl', text: `${off - idx - 1} stops` })));
+    rows.push(el('li', { class: 'rs off' }, el('span', { class: 'rt', text: t(off) }), el('span', { class: 'rr' }, el('span', { class: 'rd' })),
+      el('span', { class: 'rl' }, stopShort(times[off].stop.name), el('small', { text: 'Get off' }))));
+  }
+  return el('ul', { class: 'route' }, ...rows);
+}
+
+// ---- reminder: 10 minutes before you need to leave ----
+let remindTimer = null;
+function londonOffsetMin(ms){
+  const p = Object.fromEntries(new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).formatToParts(new Date(ms)).map(x => [x.type, x.value]));
+  return Math.round((Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute) - Math.floor(ms / 60000) * 60000) / 60000);
+}
+function londonToMs(date, mins){ const [y, m, d] = date.split('-').map(Number); const g = Date.UTC(y, m - 1, d) + Math.round(mins * 60000); return g - londonOffsetMin(g) * 60000; }
+// Inside the Android app (Capacitor), reminders are real Android alarms that fire even when the app is closed.
+const CAP = window.Capacitor;
+const NATIVE = !!(CAP && CAP.isNativePlatform && CAP.isNativePlatform());
+const LN = NATIVE ? ((CAP.Plugins && CAP.Plugins.LocalNotifications) || (CAP.registerPlugin && CAP.registerPlugin('LocalNotifications'))) : null;
+const NOTE_ID = 1001;
+let nativeDenied = false;
+async function nativeCancel(){ if (LN) try { await LN.cancel({ notifications: [{ id: NOTE_ID }] }); } catch {} }
+async function nativeSchedule(at, title, body){
+  if (!LN) return;
+  try {
+    await nativeCancel();
+    await LN.schedule({ notifications: [{ id: NOTE_ID, title, body, schedule: { at: new Date(Math.max(at, Date.now() + 1500)), allowWhileIdle: true }, smallIcon: 'ic_stat_bus', iconColor: '#22A447' }] });
+  } catch (e) { console.warn('reminder', e); }
+}
+async function nativePermission(){
+  if (!LN) return false;
+  try {
+    let p = await LN.checkPermissions();
+    if (p.display !== 'granted') p = await LN.requestPermissions();
+    nativeDenied = p.display === 'denied';
+    return p.display === 'granted';
+  } catch { return false; }
+}
+async function registerSW(){ if (NATIVE) return null;  try { if ('serviceWorker' in navigator && /^https?:/.test(location.protocol)) return await navigator.serviceWorker.register('sw.js'); } catch {} return null; }
+registerSW();
+function scheduleReminder(){
+  clearTimeout(remindTimer);
+  if (!T || !T.remind || T.notified) return;
+  const st = trackState(); if (!st || st.departed) return;
+  const at = londonToMs(T.date, st.leave - 10), ms = at - Date.now();
+  // the Android alarm is (re)set every time fresh times arrive, so it follows live delays while the app is open
+  if (NATIVE && ms > 0) { nativeSchedule(at, `Leave in 10 min for the ${T.line}`, `${T.stop} · leave at ${hhmm(st.leave)} for the ${hhmm(st.expected)} bus`); }
+  if (ms <= 0) { if (st.leaveIn > -2) fireReminder(st); return; }
+  remindTimer = setTimeout(() => fireReminder(trackState()), Math.min(ms, 2 ** 31 - 1));
+}
+async function fireReminder(st){
+  if (!T || T.notified || !st) return;
+  T.notified = true; saveT();
+  const mins = Math.max(0, Math.round(st.leaveIn));
+  const title = mins > 0 ? `Leave in ${mins} min for the ${T.line}` : `Time to go for the ${T.line}`;
+  const body = `${T.stop} · bus at ${hhmm(st.expected)}${st.live ? ' (live)' : ''}`;
+  try {
+    // in the Android app the system alarm has already been set, so only the in-app toast is shown here
+    if (NATIVE) {}
+    else if ('Notification' in window && Notification.permission === 'granted') {
+      const reg = navigator.serviceWorker && await navigator.serviceWorker.getRegistration();
+      if (reg) await reg.showNotification(title, { body, tag: 'which-stop-leave', renotify: true, vibrate: [200, 100, 200], icon: 'icon-192.png', badge: 'icon-192.png' });
+      else new Notification(title, { body });
+    }
+  } catch {}
+  if (navigator.vibrate) try { navigator.vibrate([200, 100, 200]); } catch {}
+  toast(title, body);
+}
+async function toggleRemind(){
+  if (!T) return;
+  if (T.remind) { T.remind = false; T.notified = false; saveT(); clearTimeout(remindTimer); nativeCancel(); renderTrack(); return; }
+  T.remind = true; T.notified = false; saveT();
+  if (NATIVE) { await nativePermission(); scheduleReminder(); renderTrack(); return; }
+  if ('Notification' in window && Notification.permission === 'default') { try { await Notification.requestPermission(); } catch {} }
+  await registerSW(); scheduleReminder(); renderTrack();
+}
+function calendarFile(){
+  const st = trackState(); if (!st) return;
+  const f = ms => new Date(ms).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+  const start = londonToMs(T.date, st.leave), end = Math.max(londonToMs(T.date, T.arrive + st.delay), start + 15 * 60000);
+  const ics = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Which stop//EN', 'BEGIN:VEVENT', `UID:${T.tripId}-${T.date}-${T.atco}@which-stop`, `DTSTAMP:${f(Date.now())}`,
+    `DTSTART:${f(start)}`, `DTEND:${f(end)}`, `SUMMARY:Leave for the ${T.line} at ${T.stop}`,
+    `DESCRIPTION:Bus ${T.line} from ${T.stop} at ${hhmm(st.expected)}. Leave by ${hhmm(st.leave)}.`,
+    'BEGIN:VALARM', 'ACTION:DISPLAY', `DESCRIPTION:Leave in 10 min for the ${T.line}`, 'TRIGGER:-PT10M', 'END:VALARM', 'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
+  const a = el('a', { href: URL.createObjectURL(new Blob([ics], { type: 'text/calendar' })), download: `leave-for-the-${T.line}.ics` });
+  document.body.append(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+}
+let toastTimer = null;
+function toast(title, body){
+  const t = $('toast'); t.replaceChildren(icon('bell'), el('div', {}, el('b', { text: title }), el('span', { text: body })));
+  t.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => t.hidden = true, 12000);
+  t.onclick = () => { t.hidden = true; if (T) show('track'); };
+}
+
+// ---- logging from the tracker ----
+function trackRide(st){
+  return { key: rideKey(T.date, T.atco, T.line, T.aimed), date: T.date, dir: T.dir, line: T.line, atco: T.atco, stop: T.stop, aimed: T.aimed,
+    expected: st.expected, arrive: T.arrive + st.delay, live: st.live, delay: Math.round(st.delay), ran: T.ran || st.cls === 'run', target: T.target };
+}
+
+// ---- the page ----
+function renderTrack(){
+  const body = $('track-body');
+  if (!T) { swap(body, [el('p', { class: 'muted', text: 'Not tracking a bus.' })]); return; }
+  const st = trackState(), j = cfg.journeys[T.dir], isOut = T.dir === 'out';
+  if (st.cls === 'run' && !T.ran) { T.ran = true; saveT(); }
+  const key = rideKey(T.date, T.atco, T.line, T.aimed), logged = isLogged(key);
+  const parts = [];
+  parts.push(el('div', { class: 'top' },
+    el('button', { class: 'round', type: 'button', 'aria-label': 'Back', onclick: () => show(tk.from && tk.from !== 'track' ? tk.from : 'now') }, icon('back')),
+    el('span', { class: 'muted', text: `Tracking · ${isOut ? 'to ' + destName().toLowerCase() : 'home'}` })));
+  // hero: when to leave
+  let num, unit, cls = '', word = false, figure = null;
+  if (st.dayOff > 0) { num = hhmm(st.leave); cls = 'clock'; unit = ['leave', st.dayOff === 1 ? 'tomorrow' : fmtDate(T.date)]; }
+  else if (st.departed) { num = logged ? 'On' : 'Left'; word = true; unit = logged ? ['board', 'have a good trip'] : ['your stop', `at ${hhmm(st.expected)}`]; }
+  else if (st.cls === 'late') { num = 'Late'; word = true; unit = ['too late', `bus in ${Math.max(0, Math.round(st.left))} min`]; }
+  else if (st.cls === 'run') { num = 'Run'; word = true; figure = 'run'; unit = ['now', `bus in ${Math.max(0, Math.round(st.left))} min`]; }
+  else if (st.leaveIn < 1) { num = 'Go'; word = true; figure = 'walk'; unit = ['walk', 'now']; }
+  else if (st.leaveIn >= 90) { num = hhmm(st.leave); cls = 'clock'; unit = ['leave', `in ${Math.floor(st.leaveIn / 60)} h ${Math.round(st.leaveIn % 60)} min`]; }
+  else { num = String(Math.floor(st.leaveIn)); unit = ['min', 'until you leave']; }
+  parts.push(el('section', { class: 'hero' + (st.cls === 'run' && !st.departed ? ' run' : '') },
+    el('div', { class: 'hero-row' }, el('span', { class: 'hero-num' + (word ? ' word' : '') + (cls ? ' ' + cls : ''), text: num }),
+      figure ? fig(figure, 'hero-fig') : null,
+      el('div', { class: 'hero-side' }, el('span', { text: unit[0] }), el('span', { class: 'muted', text: unit[1] }))),
+    el('div', { class: 'hero-stop', text: T.stop }),
+    T.side ? el('div', { class: 'muted', style: 'font-size:1.05rem', text: T.side }) : null));
+  // bus row
+  const timing = st.dayOff !== 0 ? (st.dayOff > 0 ? (st.dayOff === 1 ? 'tomorrow' : fmtDate(T.date)) : '') : st.live ? (Math.round(st.delay) > 0 ? `${Math.round(st.delay)} min late` : Math.round(st.delay) < 0 ? `${-Math.round(st.delay)} min early` : 'on time') : 'timetable';
+  parts.push(el('div', { class: 'busrow' }, el('span', { class: 'badge xl', text: T.line }),
+    el('div', { class: 'busrow-main' },
+      el('div', { class: 'busrow-time' }, hhmm(st.expected), el('small', {}, st.live ? el('span', { class: 'live' }) : null, timing)),
+      st.stopsAway && !st.departed ? el('div', { class: 'busrow-where' }, stopStrip(st.stopsAway, st.est), el('span', { text: awayText(st.stopsAway, st.est) })) : null)));
+  // actions
+  const acts = el('div', { class: 'track-actions' });
+  if (logged) acts.append(el('div', { class: 'logged' }, checkIcon(), el('span', { text: 'Ride logged. Have a good trip.' }), el('button', { class: 'linkbtn', type: 'button', text: 'Undo', onclick: () => { undoRide(key); renderTrack(); } })));
+  else if (st.dayOff <= 0) acts.append(el('button', { class: 'btn' + (st.departed || st.left < 6 ? '' : ' ghost'), type: 'button', onclick: () => { caught(trackRide(st)); lastHTML.delete(body); renderTrack(); } }, checkIcon(), st.departed ? 'Yes, I caught it' : 'Caught it'));
+  if (!st.departed && st.leaveIn > 1) {
+    const on = T.remind, when = hhmm(st.leave - 10);
+    const blocked = 'Notification' in window && Notification.permission === 'denied';
+    acts.append(el('button', { class: 'btn' + (on ? '' : ' ghost') + ' remind', type: 'button', 'aria-pressed': String(on), onclick: toggleRemind }, icon('bell'),
+      on ? (T.notified ? 'Reminder sent' : `Reminder at ${when}`) : st.leaveIn > 10 ? 'Remind me 10 min before I leave' : 'Remind me when to go'));
+    if (NATIVE) { if (nativeDenied) acts.append(el('p', { class: 'note', text: 'Notifications are turned off for Which stop. Turn them on in Android Settings → Apps → Which stop? → Notifications.' })); }
+    else if (on || blocked || !('Notification' in window)) acts.append(el('p', { class: 'note' },
+      blocked ? 'Notifications are blocked for this site. ' : on ? 'Phones pause web apps in the background, so this alert isn\'t guaranteed. ' : '',
+      el('button', { class: 'linkbtn', type: 'button', onclick: calendarFile }, 'Add it to your calendar'), ' for an alert that always goes off.'));
+  }
+  if (st.departed && !logged) acts.append(el('button', { class: 'btn ghost', type: 'button', text: 'No, I missed it', onclick: stopTracking }));
+  parts.push(acts);
+  // route
+  parts.push(el('section', { class: 'panel route-panel' },
+    el('div', { class: 'panel-h' }, el('h3', { text: st.dayOff > 0 ? 'The route' : 'Where\'s the bus?' }),
+      st.dayOff === 0 && !st.live ? el('span', { class: 'muted small', text: 'not tracked yet' }) : st.live ? el('span', { class: 'small' }, el('span', { class: 'live' }), 'live') : null),
+    routeView(st)));
+  parts.push(el('div', { class: 'track-foot' },
+    el('button', { class: 'stamp', type: 'button', onclick: () => loadTrack() }, tk.busy ? 'Updating…' : tk.ok ? `Updated ${tk.ok.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })} · ` : '', tk.busy ? null : el('b', { text: 'Refresh' })),
+    el('button', { class: 'linkbtn', type: 'button', text: 'Stop tracking', onclick: stopTracking })));
+  swap(body, parts);
+}
+
+// ---- Now screen banner: what you're tracking, or "did you catch it?" ----
+function renderPrompt(){
+  const box = $('caught');
+  const st = T && T.date === londonNow().date ? trackState() : (T && daysBetween(londonNow().date, T.date) > 0 ? trackState() : null);
+  const key = T && rideKey(T.date, T.atco, T.line, T.aimed);
+  if (!st || isLogged(key) || (st.departed && st.left < -30)) { swap(box, []); box.hidden = true; return; }
+  box.hidden = false;
+  if (st.departed) {
+    box.className = 'prompt';
+    swap(box, [
+      el('div', { class: 'q' }, el('span', { class: 'badge', text: T.line }), el('span', { text: `Did you catch the ${T.line}?` })),
+      el('p', { class: 'muted', text: `${hhmm(st.expected)} from ${T.stop} · ${T.dir === 'out' ? 'to ' + destName().toLowerCase() : 'home'}` }),
+      el('div', { class: 'actions' },
+        el('button', { class: 'btn', type: 'button', onclick: () => { caught(trackRide(st)); renderPrompt(); } }, checkIcon(), 'Yes, caught it'),
+        el('button', { class: 'btn ghost', type: 'button', text: 'No', onclick: () => { T = null; saveT(); lastHTML.delete(box); renderPrompt(); } }))]);
+  } else if (heroTrip === T.tripId) { swap(box, []); box.hidden = true;   // the big answer is already this bus
+  } else {
+    box.className = 'prompt slim';
+    const what = st.dayOff > 0 ? `leave ${hhmm(st.leave)} ${st.dayOff === 1 ? 'tomorrow' : fmtDate(T.date)}` : st.cls === 'run' ? 'run now' : st.leaveIn < 1 ? 'go now' : st.leaveIn >= 90 ? `leave at ${hhmm(st.leave)}` : `leave in ${Math.floor(st.leaveIn)} min`;
+    swap(box, [el('button', { class: 'slimbtn', type: 'button', onclick: () => { tk.from = 'now'; show('track'); } },
+      el('span', { class: 'badge', text: T.line }), el('span', { class: 'grow' }, `Tracking · ${what}`), T.remind ? icon('bell') : null, icon('next'))]);
+  }
+}
+// pick the tracked bus back up when the app opens (keeps the reminder scheduled)
+if (T) setTimeout(loadTrack, 300);
+if (NATIVE && LN) LN.checkPermissions().then(p => { nativeDenied = p.display === 'denied'; }).catch(() => {});
+
+// ---------- Android home-screen widget ----------
+// Only inside the Android app. The widget works out timetable times itself and refreshes
+// live delays in the background, so here we just hand it the journey settings, the bus
+// being tracked, and any fresh live data we already have.
+const WB = NATIVE ? ((CAP.Plugins && CAP.Plugins.WidgetBridge) || (CAP.registerPlugin && CAP.registerPlugin('WidgetBridge'))) : null;
+const wbCall = (m, data) => { if (WB && WB[m]) try { const r = WB[m](data); if (r && r.catch) r.catch(() => {}); } catch {} };
+
+function widgetConfig(){
+  if (!WB || !cfg || !cfg.journeys) return;
+  const dirs = {};
+  for (const k of ['out', 'back']) {
+    const j = cfg.journeys[k]; if (!j) continue;
+    dirs[k] = { label: JOURNEYS[k].label(), stops: j.stops.map(s => ({
+      atco: s.atco, name: stopParts(s, j).main, walk: s.walk,
+      services: s.services.map(v => ({ id: v.id, line: v.line, heads: v.heads.map(h => [h.h, h.off]) }))
+    })) };
+  }
+  wbCall('setConfig', { config: { buffer: BUFFER, run: cfg.run, arriveBy: cfg.journeys.out.arriveBy, leaveAt: cfg.journeys.back ? cfg.journeys.back.leaveAt : null, dirs } });
+}
+
+function widgetTracked(){
+  if (!WB) return;
+  if (!T) { wbCall('setTracked', { tracked: null }); return; }
+  const times = tk.d && tk.d.id === T.tripId ? tk.d.times : null;
+  let idx = -1, atcos = [], mins = [];
+  if (times) {
+    idx = times.findIndex(x => x.stop.atco_code === T.atco && x.pick_up !== false);
+    let base = null;
+    for (let k = 0; k <= idx; k++) {
+      const ts = times[k].aimed_departure_time || times[k].aimed_arrival_time;
+      let t = ts ? toMins(ts) : null;
+      if (t !== null) { if (base === null) base = t; if (t < base - 60) t += 1440; }
+      atcos.push(times[k].stop.atco_code); mins.push(t);
+    }
+  }
+  const v = tk.v && T.date === londonNow().date ? tk.v : null;
+  wbCall('setTracked', { tracked: {
+    line: T.line, stop: T.stop, svcId: T.svcId, tripId: T.tripId, date: T.date, aimed: T.aimed, walk: T.walk, buffer: BUFFER,
+    dirLabel: JOURNEYS[T.dir] ? JOURNEYS[T.dir].label() : '', idx, atcos, mins,
+    live: v ? { at: tk.ok ? tk.ok.getTime() : Date.now(), delay: (v.delay || 0) / 60, prev: v.progress && v.progress.prev_stop || null } : null
+  } });
+}
+
+function widgetLive(){
+  if (!WB || !buses) return;
+  const trips = {};
+  for (const b of buses) if (b.live) trips[b.tripId] = b.delay;
+  wbCall('setLive', { live: { dir: currentKey(), at: Date.now(), trips } });
+}
+
+if (WB) {
+  // keep the widget in step whenever settings or the tracked bus change
+  const setRaw = store.set.bind(store);
+  store.set = (k, v) => { setRaw(k, v); if (k === KEY) widgetConfig(); else if (k === TRACK) widgetTracked(); };
+  // tapping the widget opens the matching screen
+  const openFrom = r => { if (!r || !r.view || !cfg) return; if (r.view === 'track' && T) show('track'); else show('now'); };
+  window.addEventListener('whichstopWidget', e => openFrom(e && e.view ? e : (e && e.detail) || null));
+  setTimeout(() => { widgetConfig(); widgetTracked(); try { WB.consumeLaunch().then(openFrom).catch(() => {}); } catch {} }, 0);
+}
+
+// ---------- appearance ----------
+function getTheme(){ try { const v = localStorage.getItem('bw2-theme'); return v === 'light' || v === 'dark' ? v : 'auto'; } catch { return 'auto'; } }
+function applyTheme(th){
+  const root = document.documentElement;
+  if (th === 'auto') delete root.dataset.theme; else root.dataset.theme = th;
+  // browser bar colour: forced themes override both media-specific tags
+  const light = '#E7E7E5', dark = '#111111';
+  $('tc-light').content = th === 'dark' ? dark : light;
+  $('tc-dark').content = th === 'light' ? light : dark;
+  document.querySelectorAll('#theme button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.theme === th)));
+}
+document.querySelectorAll('#theme button').forEach(b => b.addEventListener('click', () => {
+  const th = b.dataset.theme;
+  try { if (th === 'auto') localStorage.removeItem('bw2-theme'); else localStorage.setItem('bw2-theme', th); } catch {}
+  applyTheme(th);
+}));
+applyTheme(getTheme());
+
+// ---------- start ----------
+const hm = location.hash.match(/#setup=(.+)$/);
+if (hm) { try { cfg = decode(hm[1]); store.set(KEY, cfg); } catch {} history.replaceState(null, '', location.pathname + location.search); }
+if (cfg) { store.set(KEY, cfg); show('now'); } else { step(1); show('setup'); }
+
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="w_bg">#111111</color>
+    <color name="w_surface">#262626</color>
+    <color name="w_ink">#F2F2F0</color>
+    <color name="w_muted">#8E8E92</color>
+    <color name="w_line">#2C2C2C</color>
+    <color name="w_inv_bg">#F2F2F0</color>
+    <color name="w_inv_ink">#0B0B0B</color>
+    <color name="w_run">#FF6B5E</color>
+    <color name="w_live">#4AD372</color>
+    <color name="w_est">#6A6A6E</color>
+</resources>

@@ -1,0 +1,18 @@
+# Dependencies
+node_modules/
+
+# Personal test setup and test output
+tests/config.local.json
+tests/out/
+
+# Signing key and passwords – never commit
+*.keystore
+*.jks
+keystore.properties
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.log

@@ -1,0 +1,18 @@
+{
+  "appId": "com.iangifford.whichstop",
+  "appName": "Which stop?",
+  "webDir": "www",
+  "server": {
+    "url": "https://iangifford.com/bus/",
+    "errorPath": "offline.html"
+  },
+  "android": {
+    "backgroundColor": "#E7E7E5"
+  },
+  "plugins": {
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_bus",
+      "iconColor": "#22A447"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "v": 3,
+  "home": { "label": "24 Street Name, AB1 2CD", "line": "24 Street Name", "pc": "AB1 2CD", "lat": 0, "lon": 0, "exact": true, "district": "Example Town", "input": "24 Street Name, AB1 2CD" },
+  "work": { "label": "Street Name, EF3 4GH", "line": "Street Name", "pc": "EF3 4GH", "lat": 0, "lon": 0, "exact": true, "district": "Example Town", "input": "Street Name, EF3 4GH", "name": "Work" },
+  "run": 0.5,
+  "journeys": {
+    "out": {
+      "arriveBy": "08:40",
+      "stops": [
+        { "atco": "NAPTAN_ATCO_CODE", "name": "Example Road", "indicator": "Stop A", "lat": 0, "lon": 0, "walk": 5,
+          "services": [ { "id": 0, "line": "1", "heads": [ { "h": "City Centre", "off": 10 } ] } ] }
+      ],
+      "alight": { "NAPTAN_ATCO_CODE_NEAR_WORK": ["Stop name", 20] }
+    },
+    "back": {
+      "leaveAt": "17:30",
+      "stops": [],
+      "alight": {}
+    }
+  }
+}

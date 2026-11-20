@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="WText">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:textColor">@color/w_ink</item>
+        <item name="android:includeFontPadding">false</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:ellipsize">end</item>
+    </style>
+    <style name="WTab" parent="WText">
+        <item name="android:fontFamily">@font/sg_medium</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:paddingStart">12dp</item>
+        <item name="android:paddingEnd">12dp</item>
+        <item name="android:paddingTop">7dp</item>
+        <item name="android:paddingBottom">7dp</item>
+    </style>
+    <style name="WTab.On">
+        <item name="android:textColor">@color/w_inv_ink</item>
+        <item name="android:background">@drawable/w_tab_on</item>
+    </style>
+    <style name="WBig" parent="WText">
+        <item name="android:fontFamily">@font/sg_bold</item>
+        <item name="android:textSize">58sp</item>
+        <item name="android:letterSpacing">-0.05</item>
+    </style>
+    <style name="WStatus" parent="WText">
+        <item name="android:fontFamily">@font/sg_bold</item>
+        <item name="android:textSize">25sp</item>
+        <item name="android:letterSpacing">-0.03</item>
+    </style>
+    <style name="WStop" parent="WText">
+        <item name="android:fontFamily">@font/sg_medium</item>
+        <item name="android:textSize">18sp</item>
+        <item name="android:letterSpacing">-0.02</item>
+    </style>
+    <style name="WMedium" parent="WText">
+        <item name="android:fontFamily">@font/sg_medium</item>
+        <item name="android:textSize">14sp</item>
+    </style>
+    <style name="WSmall" parent="WText">
+        <item name="android:fontFamily">@font/sg_regular</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:textColor">@color/w_muted</item>
+        <item name="android:maxLines">2</item>
+    </style>
+    <style name="WCaption" parent="WText">
+        <item name="android:fontFamily">@font/sg_regular</item>
+        <item name="android:textSize">12sp</item>
+        <item name="android:textColor">@color/w_muted</item>
+    </style>
+    <style name="WBadge" parent="WText">
+        <item name="android:fontFamily">@font/sg_bold</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:background">@drawable/w_badge</item>
+        <item name="android:paddingStart">7dp</item>
+        <item name="android:paddingEnd">7dp</item>
+        <item name="android:paddingTop">2dp</item>
+        <item name="android:paddingBottom">2dp</item>
+    </style>
+    <style name="WBadgeXL" parent="WText">
+        <item name="android:fontFamily">@font/sg_bold</item>
+        <item name="android:textSize">20sp</item>
+        <item name="android:textColor">@color/w_inv_ink</item>
+        <item name="android:background">@drawable/w_badge_xl</item>
+        <item name="android:paddingStart">10dp</item>
+        <item name="android:paddingEnd">10dp</item>
+        <item name="android:paddingTop">4dp</item>
+        <item name="android:paddingBottom">4dp</item>
+    </style>
+</resources>

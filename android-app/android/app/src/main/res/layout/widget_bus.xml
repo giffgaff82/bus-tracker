@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Which stop? home-screen widget. Tabs switch between the next bus and the tracked bus. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@android:id/background"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/w_bg"
+    android:paddingStart="16dp" android:paddingEnd="16dp" android:paddingTop="14dp" android:paddingBottom="14dp">
+
+    <!-- header: tabs + right label -->
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="horizontal" android:gravity="center_vertical">
+        <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:orientation="horizontal" android:background="@drawable/w_tabs" android:padding="3dp">
+            <TextView android:id="@+id/tab_next_on" style="@style/WTab.On" android:text="Next bus"/>
+            <TextView android:id="@+id/tab_next_off" style="@style/WTab" android:text="Next bus"/>
+            <TextView android:id="@+id/tab_track_on" style="@style/WTab.On" android:text="Tracking"/>
+            <TextView android:id="@+id/tab_track_off" style="@style/WTab" android:text="Tracking"/>
+        </LinearLayout>
+        <FrameLayout android:layout_width="0dp" android:layout_height="1dp" android:layout_weight="1"/>
+        <ImageView android:id="@+id/hdr_dot" android:layout_width="7dp" android:layout_height="7dp"
+            android:layout_marginEnd="5dp" android:src="@drawable/w_dot_live" android:importantForAccessibility="no"/>
+        <TextView android:id="@+id/hdr_text" style="@style/WCaption" android:text="To work"/>
+    </LinearLayout>
+
+    <!-- body (tap opens the app) -->
+    <FrameLayout android:id="@+id/body" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1">
+
+        <!-- NEXT BUS -->
+        <LinearLayout android:id="@+id/next" android:layout_width="match_parent" android:layout_height="match_parent"
+            android:orientation="vertical" android:gravity="bottom">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="horizontal" android:gravity="bottom">
+                <TextView android:id="@+id/big" style="@style/WBig" android:text="6"/>
+                <TextView android:id="@+id/big_run" style="@style/WBig" android:textColor="@color/w_run" android:text="2" android:visibility="gone"/>
+                <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+                    android:orientation="vertical" android:layout_marginStart="8dp" android:paddingBottom="6dp">
+                    <TextView android:id="@+id/unit" style="@style/WMedium" android:text="min"/>
+                    <TextView android:id="@+id/unit_run" style="@style/WMedium" android:textColor="@color/w_run" android:text="min" android:visibility="gone"/>
+                    <TextView android:id="@+id/sub" style="@style/WCaption" android:text="until you leave"/>
+                    <TextView android:id="@+id/sub_run" style="@style/WCaption" android:textColor="@color/w_run" android:text="run for it" android:visibility="gone"/>
+                </LinearLayout>
+                <ImageView android:id="@+id/fig" android:layout_width="46dp" android:layout_height="46dp"
+                    android:layout_marginBottom="4dp" android:src="@drawable/w_fig_walk" android:importantForAccessibility="no"/>
+            </LinearLayout>
+            <TextView android:id="@+id/stop" style="@style/WStop" android:text="High Street" android:layout_marginTop="2dp"/>
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginTop="6dp">
+                <TextView android:id="@+id/badge" style="@style/WBadge" android:text="12"/>
+                <TextView android:id="@+id/time" style="@style/WMedium" android:text="07:58" android:layout_marginStart="8dp"/>
+                <ImageView android:id="@+id/dot" android:layout_width="7dp" android:layout_height="7dp"
+                    android:layout_marginStart="8dp" android:src="@drawable/w_dot_live" android:importantForAccessibility="no"/>
+                <TextView android:id="@+id/status" style="@style/WCaption" android:text="on time" android:layout_marginStart="5dp"/>
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- TRACKING -->
+        <LinearLayout android:id="@+id/track" android:layout_width="match_parent" android:layout_height="match_parent"
+            android:orientation="vertical" android:gravity="bottom" android:visibility="gone">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="horizontal" android:gravity="center_vertical">
+                <TextView android:id="@+id/xl" style="@style/WBadgeXL" android:text="12"/>
+                <TextView android:id="@+id/away" style="@style/WStatus" android:text="3 stops away" android:layout_marginStart="10dp"/>
+            </LinearLayout>
+            <LinearLayout android:id="@+id/strip" android:layout_width="wrap_content" android:layout_height="24dp"
+                android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginTop="8dp"/>
+            <TextView android:id="@+id/meta" style="@style/WMedium" android:text="Due at High Street 07:58 · leave 07:51" android:layout_marginTop="8dp"/>
+            <TextView android:id="@+id/meta2" style="@style/WCaption" android:text="2 min late · updated 2 min ago"/>
+        </LinearLayout>
+
+        <!-- EMPTY (no bus tracked / nothing to show) -->
+        <LinearLayout android:id="@+id/empty" android:layout_width="match_parent" android:layout_height="match_parent"
+            android:orientation="horizontal" android:gravity="center_vertical" android:visibility="gone">
+            <ImageView android:id="@+id/empty_icon" android:layout_width="40dp" android:layout_height="40dp"
+                android:src="@drawable/w_marker_est" android:importantForAccessibility="no"/>
+            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+                android:orientation="vertical" android:layout_marginStart="12dp">
+                <TextView android:id="@+id/empty_title" style="@style/WStop" android:text="No bus tracked"/>
+                <TextView android:id="@+id/empty_text" style="@style/WSmall" android:text="Open Which stop? and tap a bus to follow it here."/>
+            </LinearLayout>
+        </LinearLayout>
+    </FrameLayout>
+</LinearLayout>
