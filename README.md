@@ -46,6 +46,21 @@ reminders, icon or permissions.
 
 The signing key is **not** in this repository – keep `whichstop.keystore` safe and private.
 
+## Automatic builds (GitHub Actions)
+
+- **Web preview** – every change to `web/` is published to
+  **https://giffgaff82.github.io/bus-tracker/** so you can try it before uploading to the live
+  site. It keeps its own saved journeys (set it up once, or use *Use on another phone*).
+- **Android app** – every change to `android-app/` builds a signed APK and pictures of every
+  widget state (Actions tab → the run → *Artifacts*).
+- **Releases** – push a version tag to publish an APK you can download on your phone:
+  bump `versionCode`/`versionName` in `android-app/android/app/build.gradle`, commit, then
+  `git tag v1.2 && git push origin v1.2`. It appears under *Releases*.
+
+Signing uses four repository secrets (Settings → Secrets and variables → Actions):
+`WHICHSTOP_KEYSTORE_BASE64`, `WHICHSTOP_KEYSTORE_PASSWORD`, `WHICHSTOP_KEY_ALIAS`,
+`WHICHSTOP_KEY_PASSWORD`.
+
 ## Privacy
 
 Personal journeys live only in each person's browser (`localStorage`). Nothing personal is

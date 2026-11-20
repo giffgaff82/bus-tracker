@@ -1,0 +1,49 @@
+# Builds the web app and publishes it as a preview site on GitHub Pages:
+#   https://giffgaff82.github.io/bus-tracker/
+# The live site (iangifford.com/bus/) is still uploaded by hand from web/dist/.
+name: Web preview
+
+on:
+  push:
+    branches: [main]
+    paths: ['web/**', '.github/workflows/web.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build
+        run: python3 web/build.py
+
+      - name: Check web/dist was rebuilt before committing
+        run: |
+          if ! git diff --quiet -- web/dist; then
+            echo "::warning title=web/dist is out of date::Run 'python3 web/build.py' and commit web/dist so the files you upload match the source."
+            git diff --stat -- web/dist
+          fi
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
