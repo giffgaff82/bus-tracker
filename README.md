@@ -53,9 +53,10 @@ The signing key is **not** in this repository – keep `whichstop.keystore` safe
   site. It keeps its own saved journeys (set it up once, or use *Use on another phone*).
 - **Android app** – every change to `android-app/` builds a signed APK and pictures of every
   widget state (Actions tab → the run → *Artifacts*).
-- **Releases** – push a version tag to publish an APK you can download on your phone:
-  bump `versionCode`/`versionName` in `android-app/android/app/build.gradle`, commit, then
-  `git tag v1.2 && git push origin v1.2`. It appears under *Releases*.
+- **Releases** – to publish an APK you can download on your phone: bump `versionCode` and
+  `versionName` in `android-app/android/app/build.gradle` and commit, then on GitHub go to
+  Actions → *Android app* → **Run workflow** and type the version (e.g. `1.2`). It appears
+  under *Releases*.
 
 Signing uses four repository secrets (Settings → Secrets and variables → Actions):
 `WHICHSTOP_KEYSTORE_BASE64`, `WHICHSTOP_KEYSTORE_PASSWORD`, `WHICHSTOP_KEY_ALIAS`,

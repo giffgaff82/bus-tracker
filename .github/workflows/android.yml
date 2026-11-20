@@ -1,6 +1,8 @@
 # Builds the Android app on every change to android-app/.
 #  - The APK and pictures of every widget state are attached to each run (Actions tab → run → Artifacts).
-#  - Pushing a version tag (e.g. v1.2) also makes a GitHub Release with the APK to download on a phone.
+#  - To publish a release: Actions → "Android app" → Run workflow → type a version (e.g. 1.2).
+#    It becomes a GitHub Release (tag v1.2) with the APK to download on a phone.
+#    (Pushing a v* tag yourself does the same.)
 # Signing uses repository secrets so new versions install over the old one:
 #   WHICHSTOP_KEYSTORE_BASE64, WHICHSTOP_KEYSTORE_PASSWORD, WHICHSTOP_KEY_ALIAS, WHICHSTOP_KEY_PASSWORD
 # Without them the APK is signed with a throwaway debug key (fine for checking, but it won't
@@ -13,6 +15,11 @@ on:
     paths: ['android-app/**', '.github/workflows/android.yml']
     tags: ['v*']
   workflow_dispatch:
+    inputs:
+      release:
+        description: 'Publish a release with this version (e.g. 1.2). Leave empty to just build.'
+        required: false
+        default: ''
 
 permissions:
   contents: write   # to create releases on version tags
@@ -66,12 +73,20 @@ jobs:
           WHICHSTOP_KEY_PASSWORD: ${{ secrets.WHICHSTOP_KEY_PASSWORD }}
         run: ./gradlew assembleRelease :app:testDebugUnitTest --no-daemon
 
+      - name: Show which key signed the APK
+        run: |
+          SHA=$("$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs android/app/build/outputs/apk/release/app-release.apk | grep -m1 'SHA-256' | awk '{print $NF}')
+          echo "::notice title=Signed with::certificate SHA-256 ${SHA:0:16}…"
+
       - name: Name the APK
         id: apk
+        env:
+          RELEASE: ${{ inputs.release }}
         run: |
           VERSION=$(grep -m1 versionName android/app/build.gradle | sed -E 's/.*"(.*)".*/\1/')
-          NAME="Which-stop-${GITHUB_REF_NAME#v}.apk"
-          [ "$GITHUB_REF_TYPE" = tag ] || NAME="Which-stop-${VERSION}-${GITHUB_SHA::7}.apk"
+          if [ -n "$RELEASE" ]; then NAME="Which-stop-${RELEASE#v}.apk"
+          elif [ "$GITHUB_REF_TYPE" = tag ]; then NAME="Which-stop-${GITHUB_REF_NAME#v}.apk"
+          else NAME="Which-stop-${VERSION}-${GITHUB_SHA::7}.apk"; fi
           cp android/app/build/outputs/apk/release/app-release.apk "$RUNNER_TEMP/$NAME"
           echo "path=$RUNNER_TEMP/$NAME" >> "$GITHUB_OUTPUT"
           echo "name=$NAME" >> "$GITHUB_OUTPUT"
@@ -88,8 +103,11 @@ jobs:
           path: android-app/android/app/build/widget-shots/
 
       - name: Release
-        if: github.ref_type == 'tag'
+        if: github.ref_type == 'tag' || inputs.release != ''
         uses: softprops/action-gh-release@v3
         with:
+          tag_name: ${{ inputs.release != '' && format('v{0}', inputs.release) || github.ref_name }}
+          name: ${{ inputs.release != '' && format('Which stop? {0}', inputs.release) || format('Which stop? {0}', github.ref_name) }}
+          target_commitish: ${{ github.sha }}
           files: ${{ steps.apk.outputs.path }}
           generate_release_notes: true
